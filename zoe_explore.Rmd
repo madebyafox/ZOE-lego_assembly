@@ -28,37 +28,136 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(Hmisc) # %nin% operator
 library(tidyverse) #all the things
 library(dplyr) #all the things
+library(lubridate) #timey-wimey
+library(ggformula) #regression syntax viz
+library(Hmisc) # %nin% operator
 
 ```
 
-```{r imports}
+```{r import-steps}
 
-df_steps <- read_csv("data/test.csv", col_select = 
+df_steps <- read_csv("data/wip_steps.csv", col_select = 
                        c(`Document name`,
-                         `Code`),
+                         `Code`,
+                        `Beginning`,
+                        `End`
+                         ),
                      show_col_types=FALSE) %>% 
+    rename(
+      START =  `Beginning`,
+      END = `End`
+    ) %>%
     separate('Document name', into = c("PID", "JAR","FORMAT"), sep = "_") %>% 
     separate('Code', into = c("MASTER_STEP", "STEP"), sep = '>') %>% 
+    ## strip weird end stuff from times
+    separate(END, into = c("END", "JUNK"), sep = ',') %>% 
+    separate(START, into = c("START", "JUNK"), sep = ',') %>% 
   mutate(
     PID = as_factor(PID),
     JAR = as_factor(JAR),
     FORMAT = as_factor(FORMAT),
-    STEP = as_factor(STEP)
-  )
+    STEP = as_factor(STEP),
+    MASTER_STEP = as_factor(MASTER_STEP),
+    START = hms::as_hms(START),
+    END = hms::as_hms(END),
+    DURATION = END-START
+  ) %>% select(-JUNK)
+
+## RENAME INSTRUCTION TYPES
+df_steps$FORMAT <- fct_recode(df_steps$FORMAT, 
+                            "APP" = 'A', 
+                            "BOOK" = 'B')
+
+## REFERENCE CONDITIONAL MUTATE SYNTAX
+ # mutate(grade = case_when(
+ #    score >= 90 ~ "A",
+ #    score >= 80 ~ "B",
+ #    TRUE ~ "C"  # Default value
+ #  ))
 
 
 ```
 
-## EXPLORE
-```{r explore}
+```{r import-errors}
+
+##import errors
+df_errors <- read_csv("data/wip_errors.csv", col_select = 
+                       c(`Document name`,
+                         `Code`,
+                        `Beginning`,
+                        `End`
+                         ),
+                     show_col_types=FALSE) %>% 
+    rename(
+      START =  `Beginning`,
+      END = `End`
+    ) %>%
+    separate('Document name', into = c("PID", "JAR","FORMAT"), sep = "_") %>% 
+    separate('Code', into = c("BLANK","ERROR_GROUP", "ERROR_TYPE","ERROR"), sep = '>') %>% 
+    ## strip weird end stuff from times
+    separate(END, into = c("END", "JUNK"), sep = ',') %>% 
+    separate(START, into = c("START", "JUNK"), sep = ',') %>% 
+  mutate(
+    PID = as_factor(PID),
+    JAR = as_factor(JAR),
+    FORMAT = as_factor(FORMAT),
+    # STEP = as_factor(STEP),
+    # MASTER_STEP = as_factor(MASTER_STEP),
+    START = hms::as_hms(START),
+    END = hms::as_hms(END),
+    DURATION = END-START,
+    BLANK = as_factor(str_trim(BLANK)),
+    ERROR_GROUP = as_factor(str_trim(ERROR_GROUP)),
+    ERROR_TYPE = as_factor(str_trim(ERROR_TYPE)),
+    ERROR = as_factor(str_trim(ERROR))
+  ) %>% select(-JUNK, -BLANK)
+  
+
+## RENAME INSTRUCTION TYPES
+df_errors$FORMAT <- fct_recode(df_errors$FORMAT, 
+                            "APP" = 'A', 
+                            "BOOK" = 'B')
+
+
+## get error recoveries-non-recoveries 
+df_recoveries <- df_errors %>% 
+  filter(ERROR_GROUP %in% c("Error Recovery", "Unresolved Upon Completion")) %>% 
+  rename(
+    "RECOVERY" = "ERROR_GROUP"
+  ) %>% 
+  select(-ERROR_TYPE, -ERROR)
+
+## get just top level error codes
+df_groups <- df_errors %>% 
+  filter(ERROR_GROUP %nin% c("Error Recovery", "Unresolved Upon Completion")) 
+  # select(-ERROR_TYPE, -ERROR)
+
+
+
+## REFERENCE CONDITIONAL MUTATE SYNTAX
+ # mutate(grade = case_when(
+ #    score >= 90 ~ "A",
+ #    score >= 80 ~ "B",
+ #    TRUE ~ "C"  # Default value
+ #  ))
+
+
+```
+
+
+## STEPS
+
+
+### COUNT STEPS 
+```{r count-steps}
 
 print('Number of steps per jar per participant')
 table(df_steps$PID, df_steps$JAR)
 
 
+## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR]
 df_steps %>% 
   ggplot(aes(x=PID, fill=JAR))+
     geom_bar(position="dodge") + 
@@ -66,15 +165,160 @@ df_steps %>%
   labs(title = "Steps per JAR per Participant",
        subtitle = "(includes step repeats)")
 
+## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR facet FORMAT]
+df_steps %>% 
+  ggplot(aes(x=PID, fill=JAR))+
+    geom_bar(position="dodge") + 
+  facet_wrap(~FORMAT) + 
+  theme_minimal() + 
+  labs(title = "Steps per JAR per Participant BY FORMAT",
+       subtitle = "(includes step repeats)")
+
+
+```
+
+### DURATION STEPS 
+```{r duration-steps}
+
+df_steps %>% gf_histogram(~DURATION) +
+  facet_grid(JAR~FORMAT) + 
+  theme_minimal() + 
+  labs(title = "Distribution of STEP DURATION")
+
+
+## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR]
+df_steps %>% 
+  ggplot(aes(x=PID, fill=JAR))+
+    geom_bar(position="dodge") + 
+  theme_minimal() + 
+  labs(title = "Steps per JAR per Participant",
+       subtitle = "(includes step repeats)")
+
+## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR facet FORMAT]
+df_steps %>% 
+  ggplot(aes(x=PID, fill=JAR))+
+    geom_bar(position="dodge") + 
+  facet_wrap(~FORMAT) + 
+  theme_minimal() + 
+  labs(title = "Steps per JAR per Participant BY FORMAT",
+       subtitle = "(includes step repeats)")
+
 
 ```
 
 
-## IMPORT
+
+
+
+
+### DURATION FORMATS
+```{r duration-formats}
+
+df <- df_steps %>% 
+  group_by(PID, FORMAT,JAR) %>% 
+  summarise(
+    time = sum(DURATION)
+  )
+
+# df %>% gf_histogram(~time) +
+#   facet_wrap(~FORMAT) + 
+#   theme_minimal()
+
+df %>% ggplot(aes(x=FORMAT, y=time)) +
+  geom_jitter(alpha=0.4, width=0.00, aes(color=JAR)) + 
+  geom_line(aes(group=PID))+
+  theme_minimal() + 
+  labs(title = "JAR duration by FORMAT",
+       subtitle="line indicates participant")
+  
+
+```
+
+
+
+
+## ERRORS
+### COUNT ERRORS 
+```{r count-errors}
+df <- df_groups
+
+print('Number of errors per jar per participant')
+table(df$PID, df$JAR)
+
+
+## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by JAR]
+df %>% 
+  ggplot(aes(x=PID, fill=JAR))+
+    geom_bar(position="dodge") + 
+  theme_minimal() + 
+  labs(title = "Errors per JAR per Participant")
+
+## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by JAR facet FORMAT]
+df %>% 
+  ggplot(aes(x=PID, fill=JAR))+
+    geom_bar(position="dodge") + 
+  facet_wrap(~FORMAT) + 
+  theme_minimal() + 
+  labs(title = "Errors per JAR per Participant BY FORMAT")
+
+
+## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by JAR facet FORMAT]
+df %>% 
+  ggplot(aes(x=PID, fill=FORMAT))+
+    geom_bar(position="dodge") + 
+  facet_wrap(~ERROR_TYPE) + 
+  theme_minimal() + 
+  labs(title = "Errors per FORMAT BY TYPE")
+
+## GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
+df %>% 
+  ggplot(aes(x=FORMAT, fill=ERROR_TYPE))+
+    geom_bar(position="dodge") + 
+  theme_minimal() + 
+  labs(title = "Errors by FORMAT and TYPE")
+
+
+
+## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT facet FORMAT X JAR]
+df %>% 
+  ggplot(aes(x=PID, fill=ERROR_TYPE))+
+    geom_bar() + 
+  facet_wrap(JAR~FORMAT) + 
+  theme_minimal() + 
+  labs(title = "Errors per JAR per Participant BY FORMAT")
+
+
+
+
+```
+
+### COUNT ERROR RECOVERY 
+```{r count-recoveries}
+df <- df_recoveries
+
+print('Number of recovery type per jar per participant')
+table(df$PID, df$JAR, df$RECOVERY)
+
+
+  ## GROUPED BARCHART [COUNT RECOVERIES X by JAR]
+df %>% 
+  ggplot(aes(x=PID, fill=RECOVERY))+
+    geom_bar(position="dodge") + 
+  facet_grid(FORMAT~JAR) +
+  theme_minimal() + 
+  labs(title = "Recoveries per JAR per Participant")
+
+## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by JAR facet FORMAT]
+df %>% 
+  ggplot(aes(x=RECOVERY, fill=FORMAT))+
+    geom_bar(position="dodge") + 
+  # facet_wrap(FORMAT) + 
+  theme_minimal() + 
+  labs(title = "Errors RECOVERY by FORMAT")
+```
+
 
 ## QUESTIONS 
-
-### 
 
 
 
@@ -93,24 +337,3 @@ df_steps %>%
 
 ### SPEED/ACCURACY 
 
-
-
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
