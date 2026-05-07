@@ -1,0 +1,1317 @@
+---
+title: "MVP ANALYSES"
+author: "ANONYMIZED"
+date: "2024-02-24"
+output:
+  html_document:
+    theme: cosmo
+    code_folding: hide
+    fig_caption: yes
+    number_sections: no
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+    toc_depth: 6
+  pdf_document:
+    toc: yes
+    toc_depth: '5'
+always_allow_html: yes
+font-family: DejaVu Sans
+mainfont: DejaVu Sans
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# TODO 
+
+# SETUP
+
+### Import Packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#UTILITIES
+library(Hmisc) # %nin% operator
+library(psych) #describe() & efa
+library(tidyverse) #all the things
+library(magrittr) #special pipes like %<>%
+library(summarytools) #data quality
+library(lubridate) #dealing with dates
+library(tinytable) ##sparkline tables 
+library(webshot2) ##saving sparkline tables
+
+#EDA
+library(qacBase)
+
+#VIZ
+library(ggformula) #regression syntax viz
+library(ggstatsplot) #dummies
+library(gghalves) #half boxplots 
+library(GGally) #extends ggplot for EDA 
+library(corrplot) #sophisticated correlation plots
+library(ggeasy) #easy labelling
+library(ggh4x) #guides [dual axes]
+library(patchwork) #multi-plot layout
+library(ggdist) #raincloud plots and other distributionals
+library(viridis) #color palettes
+library(RColorBrewer) #color palettes
+library(plotly) # interactive graphs
+library(paletteer) #more palettes
+library(interactions) ##easier regression ixn plots.srlsy
+library(tidygraph)
+library(ggsankey) ## sankey plots for study 3 categorical change
+
+#MODELLING
+library(jtools) #Social Science regression utilities
+library(easystats) #modelling helpers
+library(see)
+library(sjPlot)
+library(lme4)
+library(lmerTest) #for CIs in glmer
+# library(mixed) ## utilities for glmers 
+library(jmv) ## jamovi EFA
+
+
+#STATISTICAL TESTS 
+library(kSamples) #AD K-SAMPLE TEST (for distribution comparison)
+library(rstatix) #FRIEDMAN'S TESTS and effect sizes 
+
+#CONFIG
+options(readr.show_col_types = FALSE) #don't show coltypes on read_csv
+n_blocks = 6
+
+## IMPORTANT 
+GRAPH_SAVE = TRUE #set to true to generate all the SD graphs and save to folders 
+source("graphing_functions.R") #import graphing palettes and custom functions
+## note factor orders have been moved to the graphing_functions file
+
+```
+
+### Import References
+
+```{r import-refs, message=FALSE, warning = FALSE}
+
+############## IMPORT REFERENCE FILES
+ref_stimuli <- readRDS("data/input/REFERENCE/ref_stimuli.rds")
+ref_labels <- readRDS("data/input/REFERENCE/ref_labels.rds")
+
+
+############## SETUP Graph Labels
+ref_stim_id <- levels(ref_stimuli$ID)
+ref_cat_questions <- c("MAKER_ID","MAKER_AGE","MAKER_GENDER")
+ref_free_response <- c("MAKER_DETAIL", "MAKER_EXPLAIN", "TOOL_DETAIL", "CHART_EXPLAIN")
+ref_conf_questions <- c("MAKER_CONF", "AGE_CONF", "GENDER_CONF", "TOOL_CONF")
+ref_conf_questions_combined <- c("ID_CONF", "AGE_CONF", "GENDER_CONF")
+ref_sd_questions <- rownames(ref_labels)
+ref_blocks <- c(1,2,3,4,5,6)
+
+
+
+############## FULL QUESTION SET FOR S1_3
+ref_sd_questions <- c("MAKER_DESIGN","MAKER_DATA",
+                      "MAKER_POLITIC", "MAKER_ARGUE","MAKER_SELF","MAKER_ALIGN","MAKER_TRUST",
+                      "CHART_TRUST", "CHART_INTENT", "CHART_LIKE", "CHART_BEAUTY")
+
+ref_sd_questions_z <- c("MAKER_DESIGN_z","MAKER_DATA_z",
+                      "MAKER_POLITIC_z", "MAKER_ARGUE_z","MAKER_SELF_z","MAKER_ALIGN_z","MAKER_TRUST_z",
+                      "CHART_TRUST_z", "CHART_INTENT_z", "CHART_LIKE_z", "CHART_BEAUTY_z")
+
+
+############## MINIMAL QUESTION SET FOR Study 3
+ref_labels_min <- readRDS("data/input/REFERENCE/ref_labels_S3.rds")
+ref_min_sd_questions <-  c("DESIGN","DATA","POLITICS","ALIGN","INTENT","TRUST","BEAUTY")
+ref_min_sd_questions_z <-  c("DESIGN_z","DATA_z","POLITICS_z", "ALIGN_z","INTENT_z","TRUST_z","BEAUTY_z")
+
+```
+
+
+### Import Data
+
+```{r import-data, message=FALSE, warning = FALSE}
+
+############## IMPORT Study 1_2 DATA FILES
+df_participants <- readRDS("data/output/Study_1_2/df_participants.rds") #1 row per participant — demographic
+df_graphs <- readRDS("data/output/Study_1_2/df_graphs.rds") #only categorical and numeric questions
+df_graphs_z <- readRDS("data/output/Study_1_2/df_graphs_z.rds") #only categorical and numeric questions
+df_sd_questions_long <- readRDS("data/output/Study_1_2/df_sd_questions_long.rds") # only sd questions LONG
+df_questions_long <- readRDS("data/output/Study_1_2/df_questions_long.rds") # includes categoricals 
+
+
+############## IMPORT Study 3 DATA FILES
+df_graphs_s3 <- readRDS("data/output/Study_3/df_graphs_s3.rds") #only categorical and numeric questions
+
+
+############## IMPORT COMBINED DATA FILES
+df_graphs_all <- readRDS("data/output/COMBINED/df_graphs_ALL.rds") 
+df_sd_questions_long_all <- readRDS("data/output/COMBINED/df_sd_questions_long_ALL.rds") # only sd questions LONG
+df_questions_long_all <- readRDS("data/output/COMBINED/df_questions_long_ALL.rds") # only sd questions LONG
+```
+
+
+
+# ANALYSES (Study 1, Study 2)
+
+## (1) EFA | Exploratory Factor Analysis (S1,S2 minimal vars)
+
+**As Reported in Section TODO, Figure TODO, here we conduct an exploratory factor analysis of the semantic differential scale questions.**
+
+This analysis was performed on the combined dataset from Study 1 (Tumblr) and Study 2 (Prolific). Both studies were run on all 6 stimulus blocks, meaning the data are balanced across all stimuli. 
+
+We use a parallel analysis method, verified by inspection of the scree plot to determine (f=4) factors, and see that both the KMO measure and Bartlett's test of sphericity meet the necessary pre-requisites to support this analysis.  The resultant factor loadings are described below.
+
+```{r efa}
+
+## SETUP DATA
+df <- df_graphs_all %>% 
+  filter(Study %in% c("Study1","Study2")) 
+  # %>% filter(STIMULUS !="B0-0") ## filtering out B0-0 doesn't change factors
+  
+x <- ref_min_sd_questions_z
+print("Dataset for EFA")
+addmargins(table(df$Study, df$Assigned.Block)/5)
+
+
+## RUN EFA JAMOVI STYLE
+jmv::efa(
+    data = df,
+    vars = as.vector(x),
+    # nFactors = 3,
+    extraction = "ml",
+    sortLoadings = FALSE,
+    screePlot = TRUE,
+    eigen = FALSE,
+    factorCor = TRUE,
+    factorSummary = TRUE,
+    modelFit = TRUE,
+    kmo = TRUE,
+    bartlett = TRUE)
+
+
+## RUN EFA PSYCH PACKAGE
+# df <- df_graphs_all %>% select(all_of(ref_min_sd_questions_z))
+# 
+# # EFA using Maximum Likelihood extraction and Oblimin rotation
+# efa_result <- fa(df, 
+#                  nfactors = 3, 
+#                  rotate = "oblimin", 
+#                  fm = "ml")
+# 
+# # View the entire EFA output
+# print(efa_result, cut = 0.3)
+# # View entire result w/o cutoff
+# # efa_result
+# # Optional: visualize factor diagram
+# fa.diagram(efa_result)
+
+```
+
+
+## TODO INSERT (2) MODELLING | Predicting TRUST (IN WIP)
+
+
+## (2) DESCRIPTIVES | 
+
+### [0] TEASTER S3 SDs FACETED 
+
+```{r }
+  
+## DEFINE DF
+df <- df_sd_questions_long_all%>% 
+  #only block 1 for balanced data
+  filter(Assigned.Block==1) %>% 
+  #drop pilot data
+  filter(Study == "Study3") %>% 
+  mutate( TIME = factor(TIME, levels=c("PRE","POST"))) %>% 
+  mutate( QUESTION = fct_rev(QUESTION)) %>% 
+  droplevels()
+  
+  
+
+## DEFINE REFS
+n_q <- length(levels(df$QUESTION))
+stimuli <- levels(df$STIMULUS)
+questions <- ref_min_sd_questions #has qs in right order
+labels <- ref_labels_min
+
+## SET INITIAL VALUES
+s <- stimuli[1]
+q <- questions[1]
+x = list() #list of plots
+
+## LOOP OVER STIMULI, LOOP OVER QUESTIONS
+i=0
+for (s in stimuli){
+    i = i+1
+    # print(i)
+    # print(q)
+  
+    ## FILTER Q AND CALCULATE MEDIAN
+    d <- df %>% filter(STIMULUS ==s) %>% 
+    group_by(TIME,QUESTION) %>% 
+    mutate(m=median(value)) ## calc median for printing on graph
+  
+    x <- 
+      ggplot(d, aes(x = value, y = QUESTION, fill = TIME, color = TIME, )) +
+      geom_density_ridges2(scale = 0.5, panel_scaling = TRUE, rel_min_height = 0.01, alpha = 0.25,
+                           quantile_lines=TRUE,
+          # ## POINT JITTER GEOMETRY
+          # jittered_points = TRUE, alpha = 0.7, scale = 0.9)+
+           # ## RUG GEOMETRY
+            jittered_points = TRUE,
+            position = position_points_jitter(width = 0.5, height = 0),
+            point_shape = '|', point_size = 3, point_alpha = 0.5) +
+      facet_wrap(~TIME) + 
+      scale_x_continuous(limits=c(0,100)) +
+      scale_fill_manual(values = my_palettes(name="blackblack", direction = "1")) +
+      scale_color_manual(values = my_palettes(name="blackblack", direction = "1")) +
+      ## MEDIAN
+      stat_summary(fun=median, geom="text", fontface = "bold", size= 5,
+                vjust=+2, hjust = 0.50, aes(label=round(m, digits=0)))+
+      stat_summary(fun=median, geom="point", size=2) +
+   
+      labs (title = s,  x = "") +
+      # guides(
+      #   y = guide_axis_manual(labels = labels[q,"left"]),
+      #   y.sec = guide_axis_manual(labels = labels[q,"right"]),
+      #   # x.sec = guide_axis_manual(position = "top", title = q, breaks = NULL)
+      #   ) +
+      theme_ridges(grid = TRUE, center_axis_labels = TRUE) + easy_remove_legend() + theme_minimal()
+  
+  
+  ## JOIN QUESTION LEVEL PLOTS FOR THIS STIMULUS
+  title <- ref_stimuli %>% filter(ID == s) %>% select(NAME)  ##TODO IF NOT WORK ref_stim_id
+  title <- paste(s,"|",title)
+  x <- x + plot_annotation(
+     title = title,
+     subtitle ="", caption = "(point is median)")
+
+  ## SAVE GRAPH FOR THIS STIMULIS
+  if(GRAPH_SAVE == TRUE) {
+     ggsave(plot = x, path="figs/MVP/FIG_TEASER/", filename =paste0("S3_",s,"_FACET.png"), units = c("in"), width = 8, height = 24,  bg='#ffffff'  )}
+  
+
+
+}## END LOOP OVER STIMULI
+
+```
+
+
+
+### [0] TEASER S3 SDs BLACK/RED RIDGED 
+
+
+```{r plot_teaser}
+  
+#### DENSITY RIDGES#############################################################################
+  
+## DEFINE DF
+df <- df_sd_questions_long_all%>% 
+  #only block 1 for balanced data
+  filter(Assigned.Block==1) %>% 
+  #drop pilot data
+  filter(Study == "Study3") %>% 
+  mutate( TIME = factor(TIME, levels=c("POST","PRE"))) %>% 
+  mutate( QUESTION = fct_rev(QUESTION)) %>% 
+  droplevels()
+  
+
+
+
+print("participants data in this graph")
+table(df$Study, df$STIMULUS)/7 #7QS
+
+## DEFINE REFS
+n_q <- length(levels(df$QUESTION))
+stimuli <- levels(df$STIMULUS)
+questions <- ref_min_sd_questions #has qs in right order
+
+
+## SET INITIAL VALUES
+s <- stimuli[1]
+q <- questions[1]
+x = list() #list of plots
+
+## LOOP OVER STIMULI, LOOP OVER QUESTIONS
+
+for (s in stimuli){
+  i=0
+  # print(s)
+  for (q in questions) {
+    i = i+1
+    # print(i)
+    # print(q)
+  
+    ## FILTER Q AND CALCULATE MEDIAN
+    d <- df %>% filter(STIMULUS ==s) %>% filter(QUESTION ==q) %>% 
+    group_by(TIME) %>% 
+    mutate(m=median(value)) ## calc median for printing on graph
+  
+    x[[i]] <- 
+      ggplot(d, aes(x = value, y = TIME, fill = TIME, color = TIME )) +
+      
+      geom_density_ridges2(scale = 0.75, panel_scaling = TRUE, rel_min_height = 0, alpha = 0.25, quantile_lines=TRUE)+
+          # ## POINT JITTER GEOMETRY
+          # jittered_points = TRUE, alpha = 0.7, scale = 0.9)+
+           # ## RUG GEOMETRY
+            # jittered_points = TRUE,
+            # position = position_points_jitter(width = 0.5, height = 0),
+            # point_shape = '|', point_size = 3, point_alpha = 0.5) +
+      # facet_wrap(~TIME) + 
+      scale_x_continuous(limits=c(0,100)) +
+      scale_fill_manual(values = my_palettes(name="blackred", direction = "-1")) +
+      scale_color_manual(values = my_palettes(name="blackred", direction = "-1")) +
+      ## MEDIAN
+      stat_summary(fun=median, geom="text", fontface = "bold", size= 5,
+                vjust=+2, hjust = 0.50, aes(label=round(m, digits=0)))+
+      stat_summary(fun=median, geom="point", size=2) +
+   
+      labs (title = q, y = "", x = "") +
+      theme_ridges(grid = TRUE, center_axis_labels = TRUE) + 
+      easy_remove_legend() + theme_minimal()
+  
+  }## END loop over questions
+
+  ## JOIN QUESTION LEVEL PLOTS FOR THIS STIMULUS
+  title <- ref_stimuli %>% filter(ID == s) %>% select(NAME)  ##TODO IF NOT WORK ref_stim_id
+  title <- paste(s,"|",title)
+  p <- x[[1]] / x[[2]] /x[[3]] /x[[4]]/x[[5]] / x[[6]] /x[[7]]
+  p <- p + plot_annotation(
+     title = title,
+     subtitle ="", caption = "(point is median)")
+
+  ## SAVE GRAPH FOR THIS STIMULIS
+  if(GRAPH_SAVE == TRUE) {
+     ggsave(plot = p, path="figs/MVP/FIG_TEASER/", filename =paste0("S3_",s,"_RIDGES_RED.png"), units = c("in"), width = 8, height = 24,  bg='#ffffff'  )}
+
+}## END LOOP OVER STIMULI
+
+
+
+
+```
+
+
+### [0] TEASER S3 SDs BLACK RIDGED 
+
+
+```{r plot_teaser}
+  
+#### DENSITY RIDGES#############################################################################
+  
+## DEFINE DF
+df <- df_sd_questions_long_all%>% 
+  #only block 1 for balanced data
+  filter(Assigned.Block==1) %>% 
+  #drop pilot data
+  filter(Study == "Study3") %>% 
+  mutate( TIME = factor(TIME, levels=c("POST","PRE"))) %>% 
+  mutate( QUESTION = fct_rev(QUESTION)) %>% 
+  droplevels()
+  
+
+
+
+print("participants data in this graph")
+table(df$Study, df$STIMULUS)/7 #7QS
+
+## DEFINE REFS
+n_q <- length(levels(df$QUESTION))
+stimuli <- levels(df$STIMULUS)
+questions <- ref_min_sd_questions #has qs in right order
+
+
+## SET INITIAL VALUES
+s <- stimuli[1]
+q <- questions[1]
+x = list() #list of plots
+
+## LOOP OVER STIMULI, LOOP OVER QUESTIONS
+
+for (s in stimuli){
+  i=0
+  # print(s)
+  for (q in questions) {
+    i = i+1
+    # print(i)
+    # print(q)
+  
+    ## FILTER Q AND CALCULATE MEDIAN
+    d <- df %>% filter(STIMULUS ==s) %>% filter(QUESTION ==q) %>% 
+    group_by(TIME) %>% 
+    mutate(m=median(value)) ## calc median for printing on graph
+  
+    x[[i]] <- 
+      ggplot(d, aes(x = value, y = TIME, fill = TIME, color = TIME )) +
+      
+      geom_density_ridges2(scale = 0.75, panel_scaling = TRUE, rel_min_height = 0, alpha = 0.25, quantile_lines=TRUE)+
+          # ## POINT JITTER GEOMETRY
+          # jittered_points = TRUE, alpha = 0.7, scale = 0.9)+
+           # ## RUG GEOMETRY
+            # jittered_points = TRUE,
+            # position = position_points_jitter(width = 0.5, height = 0),
+            # point_shape = '|', point_size = 3, point_alpha = 0.5) +
+      # facet_wrap(~TIME) + 
+      scale_x_continuous(limits=c(0,100)) +
+      scale_fill_manual(values = my_palettes(name="blackblack", direction = "-1")) +
+      scale_color_manual(values = my_palettes(name="blackblack", direction = "-1")) +
+      ## MEDIAN
+      stat_summary(fun=median, geom="text", fontface = "bold", size= 5,
+                vjust=+2, hjust = 0.50, aes(label=round(m, digits=0)))+
+      stat_summary(fun=median, geom="point", size=2) +
+   
+      labs (title = q, y = "", x = "") +
+      theme_ridges(grid = TRUE, center_axis_labels = TRUE) + 
+      easy_remove_legend() + theme_minimal()
+  
+  }## END loop over questions
+
+  ## JOIN QUESTION LEVEL PLOTS FOR THIS STIMULUS
+  title <- ref_stimuli %>% filter(ID == s) %>% select(NAME)  ##TODO IF NOT WORK ref_stim_id
+  title <- paste(s,"|",title)
+  p <- x[[1]] / x[[2]] /x[[3]] /x[[4]]/x[[5]] / x[[6]] /x[[7]]
+  p <- p + plot_annotation(
+     title = title,
+     subtitle ="", caption = "(point is median)")
+
+  ## SAVE GRAPH FOR THIS STIMULIS
+  if(GRAPH_SAVE == TRUE) {
+     ggsave(plot = p, path="figs/MVP/FIG_TEASER/", filename =paste0("S3_",s,"_RIDGES_BLACK.png"), units = c("in"), width = 8, height = 24,  bg='#ffffff'  )}
+
+}## END LOOP OVER STIMULI
+
+
+
+
+```
+
+
+### [0] TEASER S3 SDs TINY RIDGED 
+
+
+```{r plot_teaser}
+  
+#### DENSITY RIDGES#############################################################################
+  
+## DEFINE DF
+df <- df_sd_questions_long_all%>% 
+  #only block 1 for balanced data
+  filter(Assigned.Block==1) %>% 
+  #drop pilot data
+  filter(Study == "Study3") %>% 
+  mutate( TIME = factor(TIME, levels=c("POST","PRE"))) %>% 
+  mutate( QUESTION = fct_rev(QUESTION)) %>% 
+  droplevels()
+  
+
+
+
+print("participants data in this graph")
+table(df$Study, df$STIMULUS)/7 #7QS
+
+## DEFINE REFS
+n_q <- length(levels(df$QUESTION))
+stimuli <- levels(df$STIMULUS)
+questions <- ref_min_sd_questions #has qs in right order
+
+
+## SET INITIAL VALUES
+s <- stimuli[1]
+q <- questions[1]
+x = list() #list of plots
+
+## LOOP OVER STIMULI, LOOP OVER QUESTIONS
+
+for (s in stimuli){
+  i=0
+  # print(s)
+  for (q in questions) {
+    i = i+1
+    # print(i)
+    # print(q)
+  
+    ## FILTER Q AND CALCULATE MEDIAN
+    d <- df %>% filter(STIMULUS ==s) %>% filter(QUESTION ==q) %>% 
+    group_by(TIME) %>% 
+    mutate(m=median(value)) ## calc median for printing on graph
+  
+    x[[i]] <- 
+      ggplot(d, aes(x = value, y = TIME, fill = TIME, color = TIME )) +
+      
+      geom_density_ridges2(scale = 1.5, panel_scaling = TRUE, rel_min_height = 0, alpha = 0.25, quantile_lines=TRUE)+
+          # ## POINT JITTER GEOMETRY
+          # jittered_points = TRUE, alpha = 0.7, scale = 0.9)+
+           # ## RUG GEOMETRY
+            # jittered_points = TRUE,
+            # position = position_points_jitter(width = 0.5, height = 0),
+            # point_shape = '|', point_size = 3, point_alpha = 0.5) +
+      # facet_wrap(~TIME) + 
+      scale_x_continuous(limits=c(0,100)) +
+      scale_fill_manual(values = my_palettes(name="blackblack", direction = "-1")) +
+      scale_color_manual(values = my_palettes(name="blackblack", direction = "-1")) +
+      ## MEDIAN
+      stat_summary(fun=median, geom="text", fontface = "bold", size= 5,
+                vjust=+2, hjust = 0.50, aes(label=round(m, digits=0)))+
+      stat_summary(fun=median, geom="point", size=2) +
+   
+      labs (title = q, y = "", x = "") +
+      theme_ridges(grid = TRUE, center_axis_labels = TRUE) + 
+      easy_remove_legend() + theme_minimal()
+  
+  }## END loop over questions
+
+  ## JOIN QUESTION LEVEL PLOTS FOR THIS STIMULUS
+  title <- ref_stimuli %>% filter(ID == s) %>% select(NAME)  ##TODO IF NOT WORK ref_stim_id
+  title <- paste(s,"|",title)
+  p <- x[[1]] / x[[2]] /x[[3]] /x[[4]]/x[[5]] / x[[6]] /x[[7]]
+  p <- p + plot_annotation(
+     title = title,
+     subtitle ="", caption = "(point is median)")
+
+  ## SAVE GRAPH FOR THIS STIMULIS
+  if(GRAPH_SAVE == TRUE) {
+     ggsave(plot = p, path="figs/MVP/FIG_TEASER/", filename =paste0("S3_",s,"_RIDGES_SMALL.png"), units = c("in"), width = 8, height = 24,  bg='#ffffff'  )}
+
+}## END LOOP OVER STIMULI
+
+
+
+
+```
+
+
+
+
+### [0] Teaser CONFIDENCE  for B1-1 and B1-3 in Study 3
+```{r plot_teaser}
+  
+#### DENSITY RIDGES#############################################################################
+
+## DEFINE DF
+df <- df_questions_long_all%>% 
+  #only block 1 for balanced data
+  filter(Assigned.Block==1) %>% 
+  #drop pilot data
+  filter(Study == "Study3") %>% 
+  #for Study 3 ONLY, set SAMPLE = TIME (for graphing purpose)
+  # mutate(Study = factor(Study, levels=order_study)) %>% 
+  filter(QUESTION %in% ref_conf_questions_combined) %>%
+  mutate(value = as.numeric(value),
+         TIME = factor(TIME, levels=c("PRE","POST"))) %>% 
+  droplevels()
+  
+print("participants data in this graph")
+table(df$Study, df$STIMULUS)/3 #7QS
+
+## DEFINE REFS
+n_q <- length(levels(df$QUESTION))
+stimuli <- levels(df$STIMULUS)
+questions <- ref_conf_questions_combined #has qs in right order
+
+
+## SET INITIAL VALUES
+s <- stimuli[1]
+q <- questions[1]
+x = list() #list of plots
+
+## LOOP OVER STIMULI, LOOP OVER QUESTIONS
+
+for (s in stimuli){
+  i=0
+  # print(s)
+  for (q in questions) {
+    i = i+1
+    # print(i)
+    # print(q)
+  
+    ## FILTER Q AND CALCULATE MEDIAN
+    d <- df %>% filter(STIMULUS ==s) %>% filter(QUESTION ==q) %>% 
+    group_by(TIME) %>% 
+    mutate(m=median(value)) ## calc median for printing on graph
+  
+    x[[i]] <- 
+      ggplot(d, aes(x = value, y = TIME, fill = TIME, color = TIME )) +
+      
+      geom_density_ridges2(scale = 1, panel_scaling = TRUE, rel_min_height = 0, alpha = 0.25, quantile_lines=TRUE)+
+          # ## POINT JITTER GEOMETRY
+          # jittered_points = TRUE, alpha = 0.7, scale = 0.9)+
+           # ## RUG GEOMETRY
+            # jittered_points = TRUE,
+            # position = position_points_jitter(width = 0.5, height = 0),
+            # point_shape = '|', point_size = 3, point_alpha = 0.5) +
+      facet_wrap(~TIME) + 
+      scale_x_continuous(limits=c(0,100)) +
+      scale_fill_manual(values = my_palettes(name="blackred", direction = "1")) +
+      scale_color_manual(values = my_palettes(name="blackred", direction = "1")) +
+      ## MEDIAN
+      stat_summary(fun=median, geom="text", fontface = "bold", size= 5,
+                vjust=+2, hjust = 0.50, aes(label=round(m, digits=0)))+
+      stat_summary(fun=median, geom="point", size=2) +
+   
+      labs (title = q, y = "", x = "") +
+      theme_ridges(grid = TRUE, center_axis_labels = TRUE) + 
+      easy_remove_legend() + theme_minimal()
+  
+  }## END loop over questions
+
+  ## JOIN QUESTION LEVEL PLOTS FOR THIS STIMULUS
+  title <- ref_stimuli %>% filter(ID == s) %>% select(NAME)  ##TODO IF NOT WORK ref_stim_id
+  title <- paste(s,"|",title)
+  p <- x[[1]] / x[[2]] /x[[3]] 
+  p <- p + plot_annotation(
+     title = title,
+     subtitle ="", caption = "(point is median)")
+
+  ## SAVE GRAPH FOR THIS STIMULIS
+  if(GRAPH_SAVE == TRUE) {
+     ggsave(plot = p, path="figs/MVP/FIG_TEASER/", filename =paste0(s,"_CONF.png"), units = c("in"), width = 8, height = 24,  bg='#ffffff'  )}
+
+}## END LOOP OVER STIMULI
+
+
+
+
+```
+
+
+
+### [1] Semantic Differential (aggregated)
+
+```{r plot_ridglines_sds_questions_stimulus_studies_block1_pre_post}
+  
+#### DENSITY RIDGES#############################################################################
+#### loop over questions and stimuli, vertically stack studies, color by sample
+
+## DEFINE DF
+df <- df_sd_questions_long_all%>% 
+  #drop pilot data
+  filter(Study != "Study0") %>% 
+  #for Study 3 ONLY, set SAMPLE = TIME (for graphing purpose)
+  mutate(
+    Sample = case_when(Study =="Study3" ~ TIME ,
+                       .default = Sample)) %>% 
+  mutate(Sample = factor(Sample, levels = c("TUMBLR","GENERAL","POST","PRE"))) %>% 
+  mutate(Study = factor(Study, levels=order_study)) %>% 
+  droplevels()
+  
+print("Data in this chart")
+table(df$STIMULUS,df$Study)
+  
+
+## DEFINE REFS
+n_q <- length(levels(df$QUESTION))
+questions <- ref_min_sd_questions #has qs in right order
+labels <- ref_labels_min
+
+## SET INITIAL VALUES
+q <- questions[1]
+x = list() #list of plots
+
+## LOOP OVER STIMULI, LOOP OVER QUESTIONS
+
+
+  i=0
+  # print(s)
+  for (q in questions) {
+    i = i+1
+    # print(i)
+    # print(q)
+  
+    ## FILTER Q AND CALCULATE MEDIAN
+    d <- df %>% filter(QUESTION ==q) %>% 
+    group_by(Study,Sample) %>% 
+    mutate(m=median(value)) ## calc median for printing on graph
+  
+    x[[i]] <- 
+      ggplot(d, aes(x = value, y = Study, fill = Sample, color = Sample, )) +
+      geom_density_ridges2(scale = 0.65, panel_scaling = TRUE, rel_min_height = 0.01, alpha = 0.25,
+          # ## POINT JITTER GEOMETRY
+          # jittered_points = TRUE, alpha = 0.7, scale = 0.9)+
+           # ## RUG GEOMETRY
+            jittered_points = TRUE,
+            position = position_points_jitter(width = 0.5, height = 0),
+            point_shape = '|', point_size = 3, point_alpha = 0.5) +
+      scale_x_continuous(limits=c(0,100)) +
+      scale_fill_manual(values = my_palettes(name="simple_samples", direction = "1")) +
+      scale_color_manual(values = my_palettes(name="simple_samples", direction = "1")) +
+      ## MEDIAN
+      stat_summary(fun=median, geom="text", fontface = "bold", size= 4,
+                vjust=+2, hjust = 0.50, aes(label=round(m, digits=0)))+
+      stat_summary(fun=median, geom="point", size=2) +
+   
+      labs (title = q, y = "", x = "") +
+      guides(
+        y = guide_axis_manual(labels = labels[q,"left"]),
+        y.sec = guide_axis_manual(labels = labels[q,"right"]),
+        # x.sec = guide_axis_manual(position = "top", title = q, breaks = NULL)
+        ) +
+      theme_ridges(grid = TRUE, center_axis_labels = TRUE) + easy_remove_legend() 
+    # +theme(plot.margin = unit(c(3,3,3,3), "lines"))
+  
+  }## END loop over questions
+
+  ## JOIN QUESTION LEVEL PLOTS FOR THIS STIMULUS
+  title <- "ALL STIMULI"
+  p <- x[[1]] / x[[2]] /x[[3]] / x[[4]] /x[[5]] / x[[6]] /x[[7]]
+  # p <- cowplot::plot_grid(x[[1]] / x[[2]] /x[[3]] / x[[4]] /x[[5]] / x[[6]] /x[[7]] )
+
+  p <- p + plot_annotation(
+     title = title,
+     subtitle ="", caption = "(point is median)")
+
+  ## SAVE GRAPH FOR THIS STIMULIS 
+  if(GRAPH_SAVE == TRUE) {
+     ggsave(plot = p, path="figs/MVP/FIG_Descriptives/by_stacked", filename ="FULL_STUDY_STACK_AGGREGATED.png", units = c("in"), width = 8, height = 24,  bg='#ffffff'  )}
+
+
+
+
+```
+
+
+
+
+
+### [2] Semantic Differential Questions (block1)(Studies 1, 2 3(pre-post))
+
+This plots the concicse set of semantic differential questions for BLOCK 1 stimuli for Study 1,2,3 faceting by pre/post on study 4, as a stacked ridgeplot
+
+```{r plot_ridglines_sds_questions_stimulus_studies_block1_pre_post}
+  
+#### DENSITY RIDGES#############################################################################
+#### loop over questions and stimuli, vertically stack studies, color by sample
+
+## DEFINE DF
+df <- df_sd_questions_long_all%>% 
+  #only block 1 for balanced data
+  filter(Assigned.Block==1) %>% 
+  #drop pilot data
+  filter(Study != "Study0") %>% 
+  #for Study 3 ONLY, set SAMPLE = TIME (for graphing purpose)
+  mutate(
+    Sample = case_when(Study =="Study3" ~ TIME ,
+                       .default = Sample)) %>% 
+  mutate(Sample = factor(Sample, levels = c("TUMBLR","GENERAL","POST","PRE"))) %>% 
+  mutate(Study = factor(Study, levels=order_study)) %>% 
+  droplevels()
+  
+  
+
+## DEFINE REFS
+n_q <- length(levels(df$QUESTION))
+stimuli <- levels(df$STIMULUS)
+questions <- ref_min_sd_questions #has qs in right order
+labels <- ref_labels_min
+
+## SET INITIAL VALUES
+s <- stimuli[1]
+q <- questions[1]
+x = list() #list of plots
+
+## LOOP OVER STIMULI, LOOP OVER QUESTIONS
+
+for (s in stimuli){
+  i=0
+  # print(s)
+  for (q in questions) {
+    i = i+1
+    # print(i)
+    # print(q)
+  
+    ## FILTER Q AND CALCULATE MEDIAN
+    d <- df %>% filter(STIMULUS ==s) %>% filter(QUESTION ==q) %>% 
+    group_by(Study,Sample) %>% 
+    mutate(m=median(value)) ## calc median for printing on graph
+  
+    x[[i]] <- 
+      ggplot(d, aes(x = value, y = Study, fill = Sample, color = Sample, )) +
+      geom_density_ridges2(scale = 0.75, panel_scaling = TRUE, rel_min_height = 0.01, alpha = 0.25,
+          # ## POINT JITTER GEOMETRY
+          # jittered_points = TRUE, alpha = 0.7, scale = 0.9)+
+           # ## RUG GEOMETRY
+            jittered_points = TRUE,
+            position = position_points_jitter(width = 0.5, height = 0),
+            point_shape = '|', point_size = 3, point_alpha = 0.5) +
+      scale_x_continuous(limits=c(0,100)) +
+      scale_fill_manual(values = my_palettes(name="simple_samples", direction = "1")) +
+      scale_color_manual(values = my_palettes(name="simple_samples", direction = "1")) +
+      ## MEDIAN
+      stat_summary(fun=median, geom="text", fontface = "bold", size= 5,
+                vjust=1.5, hjust = 0.50, aes(label=round(m, digits=0)))+
+      stat_summary(fun=median, geom="point", size=2) +
+   
+      labs (title = q, y = "", x = "") +
+      guides(
+        y = guide_axis_manual(labels = labels[q,"left"]),
+        y.sec = guide_axis_manual(labels = labels[q,"right"]),
+        # x.sec = guide_axis_manual(position = "top", title = q, breaks = NULL)
+        ) +
+      theme_ridges(grid = TRUE, center_axis_labels = TRUE) + easy_remove_legend() 
+  
+  }## END loop over questions
+
+  ## JOIN QUESTION LEVEL PLOTS FOR THIS STIMULUS
+  title <- ref_stimuli %>% filter(ID == s) %>% select(NAME)  ##TODO IF NOT WORK ref_stim_id
+  title <- paste(s,"|",title)
+  p <- x[[1]] / x[[2]] /x[[3]] / x[[4]] /x[[5]] / x[[6]] /x[[7]] 
+  p <- p + plot_annotation(
+     title = title,
+     subtitle ="", caption = "(point is median)")
+
+  ## SAVE GRAPH FOR THIS STIMULIS 
+  if(GRAPH_SAVE == TRUE) {
+     ggsave(plot = p, path="figs/MVP/FIG_Descriptives/by_stacked", filename =paste0("FULL_STUDY_STACK_",s,".png"), units = c("in"), width = 8, height = 24,  bg='#ffffff'  )}
+
+}## END LOOP OVER STIMULI
+
+
+```
+
+### [3] Confidence Scores (block1)(Studies 1, 2 3(pre-post))
+
+This plots the concicse set of confidence scores for BLOCK 1 stimuli for Study 1,2,3 faceting by pre/post on study 4, as a stacked ridgeplot
+
+```{r plot_ridglines_confs_questions_stimulus_studies_block1_pre_post}
+  
+#### DENSITY RIDGES#############################################################################
+#### loop over questions and stimuli, vertically stack studies, color by sample
+
+## DEFINE DF
+df <- df_questions_long_all%>% 
+  #only block 1 for balanced data
+  filter(Assigned.Block==1) %>% 
+  #drop pilot data
+  filter(Study != "Study0") %>% 
+  #for Study 3 ONLY, set SAMPLE = TIME (for graphing purpose)
+  mutate(
+    Sample = case_when(Study =="Study3" ~ TIME ,
+                       .default = Sample)) %>% 
+  mutate(Sample = factor(Sample, levels = c("TUMBLR","GENERAL","POST","PRE"))) %>% 
+  mutate(Study = factor(Study, levels=order_study)) %>% 
+  filter(QUESTION %in% ref_conf_questions_combined) %>%
+  mutate(QUESTION = factor(QUESTION, levels=ref_conf_questions_combined),
+         value = as.numeric(value)) %>% 
+  droplevels()
+  
+print("participants data in this graph")
+table(df$Study, df$Assigned.Block)/3/5 #3 questions, 5 graphs
+
+## DEFINE REFS
+n_q <- length(levels(df$QUESTION))
+stimuli <- levels(df$STIMULUS)
+questions <- ref_conf_questions_combined #has qs in right order
+
+
+## SET INITIAL VALUES
+s <- stimuli[1]
+q <- questions[1]
+x = list() #list of plots
+
+## LOOP OVER STIMULI, LOOP OVER QUESTIONS
+
+for (s in stimuli){
+  i=0
+  # print(s)
+  for (q in questions) {
+    i = i+1
+    # print(i)
+    # print(q)
+  
+    ## FILTER Q AND CALCULATE MEDIAN
+    d <- df %>% filter(STIMULUS ==s) %>% filter(QUESTION ==q) %>% 
+    group_by(Study,Sample) %>% 
+    mutate(m=median(value)) ## calc median for printing on graph
+  
+    x[[i]] <- 
+      ggplot(d, aes(x = value, y = Study, fill = Sample, color = Sample, )) +
+      geom_density_ridges2(scale = 1, panel_scaling = TRUE, rel_min_height = 0.01, alpha = 0.25,
+          # ## POINT JITTER GEOMETRY
+          # jittered_points = TRUE, alpha = 0.7, scale = 0.9)+
+           # ## RUG GEOMETRY
+            jittered_points = TRUE,
+            position = position_points_jitter(width = 0.5, height = 0),
+            point_shape = '|', point_size = 3, point_alpha = 0.5) +
+      scale_x_continuous(limits=c(0,100)) +
+      scale_fill_manual(values = my_palettes(name="simple_samples", direction = "1")) +
+      scale_color_manual(values = my_palettes(name="simple_samples", direction = "1")) +
+      ## MEDIAN
+      stat_summary(fun=median, geom="text", fontface = "bold", size= 4,
+                vjust=+2, hjust = 0.50, aes(label=round(m, digits=0)))+
+      stat_summary(fun=median, geom="point", size=2) +
+   
+      labs (title = q, y = "", x = "") +
+      theme_ridges(grid = TRUE, center_axis_labels = TRUE) + easy_remove_legend() 
+  
+  }## END loop over questions
+
+  ## JOIN QUESTION LEVEL PLOTS FOR THIS STIMULUS
+  title <- ref_stimuli %>% filter(ID == s) %>% select(NAME)  ##TODO IF NOT WORK ref_stim_id
+  title <- paste(s,"|",title)
+  p <- x[[1]] / x[[2]] /x[[3]] 
+  p <- p + plot_annotation(
+     title = title,
+     subtitle ="", caption = "(point is median)")
+
+  ## SAVE GRAPH FOR THIS STIMULIS 
+  if(GRAPH_SAVE == TRUE) {
+     ggsave(plot = p, path="figs/MVP/FIG_Descriptives/by_stacked", filename =paste0("FULL_STUDY_STACK_CONF_",s,".png"), units = c("in"), width = 8, height = 24,  bg='#ffffff'  )}
+
+}## END LOOP OVER STIMULI
+
+
+```
+
+
+### [4] Categorical Variables Plots (Study 1,2) (aggregated)
+
+
+
+```{r categoricals_aggregated}
+
+
+## SETUP DATA 
+ df <- df_graphs %>% 
+  select(PID, Assigned.Block, Study, STIMULUS, ENCOUNTER, MAKER_ID, MAKER_AGE,MAKER_GENDER) %>% 
+  filter(Study %in% c("Study1", "Study2")) %>%
+  mutate(Study = factor(Study, levels=order_study)) %>% 
+
+  print("data in this graph")
+table(df$STIMULUS, df$Study)
+
+
+######## FACETED BARPLOT MAKER
+(ID <-  df %>% 
+  ggplot(aes(x=Study, fill=MAKER_ID)) + 
+    geom_bar(position="fill") + 
+    scale_fill_manual(values = my_palettes(name="reds", direction = "1"))+
+   coord_flip() + 
+    labs(title="MAKER_AGGREGATED (S1,S2)")
+)
+   
+######## FACETED BARPLOT AGE
+(AGE <- df %>% 
+  ggplot(aes(x=Study, fill=MAKER_AGE)) + 
+    geom_bar(position="fill") + 
+    scale_fill_manual(values = my_palettes(name="lightblues", direction = "1"))+
+   coord_flip()+
+    labs(title="AGE_AGGREGATED (S1,S2)")
+) 
+   
+######## FACETED BARPLOT GENDER
+(GENDER <-  df %>% 
+  ggplot(aes(x=Study, fill=MAKER_GENDER)) + 
+    geom_bar(position="fill") + 
+    scale_fill_manual(values = my_palettes(name="smallgreens", direction = "1"))+
+   coord_flip()+
+    labs(title="GENDER_AGGREGATED (S1,S2)")
+)   
+   
+######## FACETED BARPLOT ENCOUNTER
+(ENCOUNTER <-  df %>% 
+  ggplot(aes(x=Study, fill=ENCOUNTER)) + 
+    geom_bar(position="fill") + 
+    scale_fill_manual(values = my_palettes(name="encounter", direction = "1"))+
+   coord_flip()+
+    labs(title="ENCOUNTER_AGGREGATED (S1,S2)")
+)
+
+
+
+if(GRAPH_SAVE){
+  
+ggsave(plot = ID, path="figs/MVP/FIG_Descriptives/categoricals", filename =paste0("MAKER_aggregated.png"), units = c("in"), width = 6, height = 2 ,  bg='#ffffff'  )
+  
+ggsave(plot = AGE, path="figs/MVP/FIG_Descriptives/categoricals", filename =paste0("AGE_aggregated.png"), units = c("in"), width = 6, height = 2 ,  bg='#ffffff'  )
+  
+ggsave(plot = GENDER, path="figs/MVP/FIG_Descriptives/categoricals", filename =paste0("GENDER_aggregated.png"), units = c("in"), width = 6, height = 2 ,  bg='#ffffff'  )
+  
+ggsave(plot = ENCOUNTER, path="figs/MVP/FIG_Descriptives/categoricals", filename =paste0("ENCOUNTER_aggregated.png"), units = c("in"), width = 6, height = 2 ,  bg='#ffffff'  )
+}
+
+
+```
+
+### [5] Categorical Variables Plots (block1)
+
+
+```{r categoricals_by_stimulus}
+
+
+## SETUP DATA 
+ df <- df_graphs %>% 
+  select(PID, Assigned.Block, Study, STIMULUS, ENCOUNTER, MAKER_ID, MAKER_AGE,MAKER_GENDER) %>% 
+  filter(Study %in% c("Study1", "Study2")) %>%
+  filter(Assigned.Block ==1) %>% 
+  mutate(Study = factor(Study, levels=order_study)) %>% 
+  #reorder stimuli
+  mutate(STIMULUS = factor(STIMULUS, levels=c("B1-1","B1-2","B1-3","B1-4","B0-0")))
+
+
+######## FACETED BARPLOT MAKER
+(ID <-  df %>% 
+  ggplot(aes(x=Study, fill=MAKER_ID)) + 
+    geom_bar(position="fill") + 
+    scale_fill_manual(values = my_palettes(name="reds", direction = "1"))+
+   facet_grid( .~ STIMULUS) + 
+   coord_flip() +
+   labs(title="MAKER_BY_STIMULUS_B1")
+
+)
+   
+######## FACETED BARPLOT AGE
+(AGE <- df %>% 
+  ggplot(aes(x=Study, fill=MAKER_AGE)) + 
+    geom_bar(position="fill") + 
+    scale_fill_manual(values = my_palettes(name="lightblues", direction = "1"))+
+   facet_grid( .~ STIMULUS) + 
+   coord_flip() + 
+    labs(title="AGE_BY_STIMULUS_B1")
+) 
+   
+######## FACETED BARPLOT GENDER
+(GENDER <-  df %>% 
+  ggplot(aes(x=Study, fill=MAKER_GENDER)) + 
+    geom_bar(position="fill") + 
+    scale_fill_manual(values = my_palettes(name="smallgreens", direction = "1"))+
+   facet_grid( .~ STIMULUS) + 
+   coord_flip()+
+   labs(title="GENDER_BY_STIMULUS_B1")
+)   
+   
+######## FACETED BARPLOT ENCOUNTER
+(ENCOUNTER <-  df %>% 
+  ggplot(aes(x=Study, fill=ENCOUNTER)) + 
+    geom_bar(position="fill") + 
+    scale_fill_manual(values = my_palettes(name="encounter", direction = "1"))+
+   facet_grid( .~ STIMULUS) + 
+   coord_flip() + 
+   labs(title="ENCOUNTER_ID_BY_STIMULUS_B1")
+)
+
+
+
+if(GRAPH_SAVE){
+  
+ggsave(plot = ID, path="figs/MVP/FIG_Descriptives/categoricals", filename =paste0("MAKER_by_stimulus.png"), units = c("in"), width = 12, height = 2 ,  bg='#ffffff'  )
+  
+ggsave(plot = AGE, path="figs/MVP/FIG_Descriptives/categoricals", filename =paste0("AGE_by_stimulus.png"), units = c("in"), width = 12, height = 2 ,  bg='#ffffff'  )
+  
+ggsave(plot = GENDER, path="figs/MVP/FIG_Descriptives/categoricals", filename =paste0("GENDER_by_stimulus.png"), units = c("in"), width = 12, height = 2 ,  bg='#ffffff'  )
+  
+ggsave(plot = ENCOUNTER, path="figs/MVP/FIG_Descriptives/categoricals", filename =paste0("ENCOUNTER_by_stimulus.png"), units = c("in"), width = 12, height = 2 ,  bg='#ffffff'  )
+}
+
+
+```
+
+
+
+
+
+### [6] Sankey Categorical Variables Change (Study 3)
+
+
+#### MAKER
+```{r SANKEY-ID}
+
+### FILTER FOR ONLY ID QUESTION
+df <- df_graphs_s3 %>% 
+  mutate(STIMULUS = factor(STIMULUS, levels=c("B1-1","B1-2","B1-3","B1-4","B0-0"))) %>% 
+  select(PRE_ID, POST_ID, STIMULUS, PID) %>% 
+  mutate(
+    PRE_ID = factor(PRE_ID, levels = rev(order_maker)),
+    POST_ID = factor(POST_ID, levels = rev(order_maker))
+  )
+
+### {GGSANKEY} ################################
+
+## REPEATED MEASURES
+## SANKEY DIAGRAM
+## MUST RESHAPE FOR SANKEY 
+ds <- df %>% 
+  ##custom from ggsankey
+  make_long(PRE_ID, POST_ID, value=STIMULUS) %>% 
+  mutate(
+    node = factor(node, levels=rev(order_maker)),
+    next_node= factor(next_node, levels=rev(order_maker)),
+    match = ifelse(node==next_node, 1, 0.5), # try to highlight throughflows
+  ) 
+
+(S <- ggplot(ds, aes(x = x, 
+               next_x = next_x, 
+               node = node, 
+               next_node = next_node,
+               fill = node
+               ))+
+  geom_sankey(width = 0.25, flow.alpha = 0.65, node.alpha = 1, node.color = "white") +
+  # geom_sankey_text(aes( x = as.numeric(x),  label = after_stat(freq)),
+  #         size = 3, color = "white", fontface = "bold", check_overlap = TRUE) +
+  scale_fill_manual(values = my_palettes(name="reds", direction = "-1"), guide = guide_legend(reverse = TRUE)) +
+  labs(title = "CHANGE in MAKER ID by STIMULUS", 
+       x = "TIME", y = "(count)", fill = "MAKER",
+       caption = "") + 
+  theme_minimal() + facet_grid(.~value)
+)
+#############################################
+
+if(GRAPH_SAVE == TRUE) {
+    ggsave(plot = S, path="figs/MVP/FIG_Descriptives/categoricals", filename =paste0("S3_ID_CHANGE_by_STIMLUS.png"), units = c("in"), width = 16, height = 8,  bg='#ffffff'  )
+  }
+```
+
+#### AGE
+```{r SANKEY-AGE}
+
+### FILTER FOR ONLY AGE QUESTION
+df <- df_graphs_s3 %>% 
+  mutate(STIMULUS = factor(STIMULUS, levels=c("B1-1","B1-2","B1-3","B1-4","B0-0"))) %>% 
+  select(PRE_AGE, POST_AGE, STIMULUS, PID) 
+
+### {GGSANKEY} ################################
+
+## REPEATED MEASURES
+## SANKEY DIAGRAM
+## MUST RESHAPE FOR SANKEY 
+ds <- df %>% 
+  ##custom from ggsankey
+  make_long(PRE_AGE, POST_AGE, value=STIMULUS) %>% 
+  mutate(
+    node = factor(node, levels=rev(order_age)),
+    next_node= factor(next_node,rev(order_age)),
+    match = ifelse(node==next_node, 1, 0.5), # try to highlight throughflows
+  ) 
+
+(S <- ggplot(ds, aes(x = x, 
+               next_x = next_x, 
+               node = node, 
+               next_node = next_node,
+               fill = node
+               ))+
+  geom_sankey(width = 0.25, flow.alpha = 0.65, node.alpha = 1, node.color = "white") +
+  # geom_sankey_text(aes( x = as.numeric(x),  label = after_stat(freq)),
+  #         size = 3, color = "white", fontface = "bold", check_overlap = TRUE) +
+  scale_fill_manual(values = my_palettes(name="lightblues", direction = "-1"), guide = guide_legend(reverse = TRUE)) +
+  labs(title = "CHANGE in AGE by STIMULUS", 
+       x = "TIME", y = "(count)", fill = "AGE",
+       caption = "") + 
+  theme_minimal() + facet_grid(.~value)
+)
+#############################################
+
+
+if(GRAPH_SAVE == TRUE) {
+    ggsave(plot = S, path="figs/MVP/FIG_Descriptives/categoricals", filename =paste0("S3_AGE_CHANGE_by_STIMLUS.png"), units = c("in"), width = 16, height = 8,  bg='#ffffff'  )
+  }
+
+```
+
+#### GENDER
+```{r SANKEY-GENDER}
+
+### FILTER FOR ONLY GENDER QUESTION
+df <- df_graphs_s3 %>% 
+  select(PRE_GENDER, POST_GENDER, STIMULUS, PID) %>% 
+  mutate(STIMULUS = factor(STIMULUS, levels=c("B1-1","B1-2","B1-3","B1-4","B0-0")))
+
+### {GGSANKEY} ################################
+
+## REPEATED MEASURES
+## SANKEY DIAGRAM
+## MUST RESHAPE FOR SANKEY 
+ds <- df %>% 
+  ##custom from ggsankey
+  make_long(PRE_GENDER, POST_GENDER, value=STIMULUS) %>% 
+  mutate(
+    node = factor(node, levels = rev(order_gender)),
+    next_node= factor(next_node, levels = rev(order_gender)),
+    match = ifelse(node==next_node, 1, 0.5), # try to highlight throughflows
+  ) 
+
+(S <- ggplot(ds, aes(x = x, 
+               next_x = next_x, 
+               node = node, 
+               next_node = next_node,
+               fill = node
+               ))+
+  geom_sankey(width = 0.25, flow.alpha = 0.65, node.alpha = 1, node.color = "white") +
+  # geom_sankey_text(aes( x = as.numeric(x),  label = after_stat(freq)),
+  #         size = 3, color = "white", fontface = "bold", check_overlap = TRUE) +
+  scale_fill_manual(values = my_palettes(name="smallgreens", direction = "-1"), guide = guide_legend(reverse = TRUE)) +
+  labs(title = "CHANGE in GENDER by STIMULUS", 
+       x = "TIME", y = "(count)", fill = "GENDER",
+       caption = "") + 
+  theme_minimal() + facet_grid(.~value)
+)
+#############################################
+
+
+if(GRAPH_SAVE == TRUE) {
+    ggsave(plot = S, path="figs/MVP/FIG_Descriptives/categoricals", filename =paste0("S3_GENDER_CHANGE_by_STIMLUS.png"), units = c("in"), width = 16, height = 8,  bg='#ffffff'  )
+  }
+
+```
+
+
+
+
+
+#### ENCOUNTER
+```{r SANKEY-ENCOUNTER}
+
+### FILTER FOR ONLY GENDER QUESTION
+df <- df_graphs_s3 %>% 
+  select(PRE_ENCOUNTER, POST_ENCOUNTER, STIMULUS, PID) %>% 
+  mutate(STIMULUS = factor(STIMULUS, levels=c("B1-1","B1-2","B1-3","B1-4","B0-0")))
+
+### {GGSANKEY} ################################
+
+## REPEATED MEASURES
+## SANKEY DIAGRAM
+## MUST RESHAPE FOR SANKEY 
+ds <- df %>% 
+  ##custom from ggsankey
+  make_long(PRE_ENCOUNTER, POST_ENCOUNTER, value=STIMULUS) %>% 
+  mutate(
+    node = factor(node, levels = rev(order_encounter)),
+    next_node= factor(next_node, levels = rev(order_encounter)),
+    match = ifelse(node==next_node, 1, 0.5), # try to highlight throughflows
+  ) 
+
+(S <- ggplot(ds, aes(x = x, 
+               next_x = next_x, 
+               node = node, 
+               next_node = next_node,
+               fill = node
+               ))+
+  geom_sankey(width = 0.25, flow.alpha = 0.65, node.alpha = 1, node.color = "white") +
+  # geom_sankey_text(aes( x = as.numeric(x),  label = after_stat(freq)),
+  #         size = 3, color = "white", fontface = "bold", check_overlap = TRUE) +
+  scale_fill_manual(values = my_palettes(name="encounter", direction = "-1"), guide = guide_legend(reverse = TRUE)) +
+  labs(title = "CHANGE in ENCOUNTER by STIMULUS", 
+       x = "TIME", y = "(count)", fill = "ENCOUNTER",
+       caption = "") + 
+  theme_minimal() + facet_grid(.~value)
+)
+#############################################
+
+
+if(GRAPH_SAVE == TRUE) {
+    ggsave(plot = S, path="figs/MVP/FIG_Descriptives/categoricals", filename =paste0("S3_ENCOUNTER_CHANGE_by_STIMLUS.png"), units = c("in"), width = 16, height = 8,  bg='#ffffff'  )
+  }
+
+```
+
+
+
+
+
+
+
+
+# SESSION
+
+```{r session}
+sessionInfo()
+```
