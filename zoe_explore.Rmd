@@ -24,14 +24,51 @@ editor_options:
     wrap: 72
 ---
 
+## SETUP
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(Hmisc) # %nin% operator
 library(tidyverse) #all the things
+library(dplyr) #all the things
 
 ```
 
-## SETUP
+```{r imports}
+
+df_steps <- read_csv("data/test.csv", col_select = 
+                       c(`Document name`,
+                         `Code`),
+                     show_col_types=FALSE) %>% 
+    separate('Document name', into = c("PID", "JAR","FORMAT"), sep = "_") %>% 
+    separate('Code', into = c("MASTER_STEP", "STEP"), sep = '>') %>% 
+  mutate(
+    PID = as_factor(PID),
+    JAR = as_factor(JAR),
+    FORMAT = as_factor(FORMAT),
+    STEP = as_factor(STEP)
+  )
+
+
+```
+
+## EXPLORE
+```{r explore}
+
+print('Number of steps per jar per participant')
+table(df_steps$PID, df_steps$JAR)
+
+
+df_steps %>% 
+  ggplot(aes(x=PID, fill=JAR))+
+    geom_bar(position="dodge") + 
+  theme_minimal() + 
+  labs(title = "Steps per JAR per Participant",
+       subtitle = "(includes step repeats)")
+
+
+```
+
 
 ## IMPORT
 
