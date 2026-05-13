@@ -29,7 +29,7 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse) #all the things
-library(dplyr) #all the things
+library(dplyr) #all the things 
 library(lubridate) #timey-wimey
 library(ggformula) #regression syntax viz
 library(Hmisc) # %nin% operator
@@ -38,7 +38,7 @@ library(Hmisc) # %nin% operator
 
 ```{r import-steps}
 
-df_steps <- read_csv("data/wip_steps.csv", col_select = 
+df_steps <- read_csv("data/input/wip_steps.csv", col_select = 
                        c(`Document name`,
                          `Code`,
                         `Beginning`,
@@ -58,17 +58,32 @@ df_steps <- read_csv("data/wip_steps.csv", col_select =
     PID = as_factor(PID),
     JAR = as_factor(JAR),
     FORMAT = as_factor(FORMAT),
-    STEP = as_factor(STEP),
-    MASTER_STEP = as_factor(MASTER_STEP),
+    # ERROR_GROUP = as_factor(str_trim(ERROR_GROUP)),
+    STEP = as_factor(str_trim(STEP)),
+    # MASTER_STEP = as_factor(MASTER_STEP),
     START = hms::as_hms(START),
     END = hms::as_hms(END),
     DURATION = END-START
-  ) %>% select(-JUNK)
+  ) |> 
+## FILTER OUT P11 [APP ONLY CONTROL] // P18 [BOOK ONLY CONTROL]
+  filter(PID %nin% c("P11", "P18"))%>% 
+  select(-JUNK, -MASTER_STEP) |> 
+  droplevels()
+
 
 ## RENAME INSTRUCTION TYPES
 df_steps$FORMAT <- fct_recode(df_steps$FORMAT, 
                             "APP" = 'A', 
                             "BOOK" = 'B')
+
+
+
+## DF instances of each step code excluding (dual-coded) step repeat + flip
+df_step_instances <- df_steps %>% 
+  filter(STEP %nin% c("Step Repeat", "Flipping/Tapping Through Fast")) |> 
+  droplevels()
+
+
 
 ## REFERENCE CONDITIONAL MUTATE SYNTAX
  # mutate(grade = case_when(
@@ -78,12 +93,15 @@ df_steps$FORMAT <- fct_recode(df_steps$FORMAT,
  #  ))
 
 
+## TODO re-order step levels (eg 0A, 0B, Step 1)
+## TODO round up ms instead of truncate on timestamps 
+
 ```
 
 ```{r import-errors}
 
 ##import errors
-df_errors <- read_csv("data/wip_errors.csv", col_select = 
+df_errors <- read_csv("data/input/wip_errors.csv", col_select = 
                        c(`Document name`,
                          `Code`,
                         `Beginning`,
@@ -98,23 +116,20 @@ df_errors <- read_csv("data/wip_errors.csv", col_select =
     separate('Code', into = c("BLANK","ERROR_GROUP", "ERROR_TYPE","ERROR"), sep = '>') %>% 
     ## strip weird end stuff from times
     separate(END, into = c("END", "JUNK"), sep = ',') %>% 
-    separate(START, into = c("START", "JUNK"), sep = ',') %>% 
+    separate(START, into = c("START", "JUNK"), sep = ',')  %>% 
   mutate(
     PID = as_factor(PID),
     JAR = as_factor(JAR),
     FORMAT = as_factor(FORMAT),
-    # STEP = as_factor(STEP),
-    # MASTER_STEP = as_factor(MASTER_STEP),
     START = hms::as_hms(START),
     END = hms::as_hms(END),
     DURATION = END-START,
-    BLANK = as_factor(str_trim(BLANK)),
     ERROR_GROUP = as_factor(str_trim(ERROR_GROUP)),
     ERROR_TYPE = as_factor(str_trim(ERROR_TYPE)),
     ERROR = as_factor(str_trim(ERROR))
   ) %>% select(-JUNK, -BLANK)
   
-
+    
 ## RENAME INSTRUCTION TYPES
 df_errors$FORMAT <- fct_recode(df_errors$FORMAT, 
                             "APP" = 'A', 
@@ -122,7 +137,9 @@ df_errors$FORMAT <- fct_recode(df_errors$FORMAT,
 
 
 ## get error recoveries-non-recoveries 
-df_recoveries <- df_errors %>% 
+## TODO document what the purpose of this df is
+## only frequency; step codes intersection is not going to be accurate bc it will overlap with wrong step code
+df_error_recoveries <- df_errors %>% 
   filter(ERROR_GROUP %in% c("Error Recovery", "Unresolved Upon Completion")) %>% 
   rename(
     "RECOVERY" = "ERROR_GROUP"
@@ -130,7 +147,7 @@ df_recoveries <- df_errors %>%
   select(-ERROR_TYPE, -ERROR)
 
 ## get just top level error codes
-df_groups <- df_errors %>% 
+df_error_groups <- df_errors %>% 
   filter(ERROR_GROUP %nin% c("Error Recovery", "Unresolved Upon Completion")) 
   # select(-ERROR_TYPE, -ERROR)
 
@@ -146,6 +163,9 @@ df_groups <- df_errors %>%
 
 ```
 
+### TODO HARDCODE P11 & P18 handling
+
+### TODO participant-level wrangling
 
 ## STEPS
 
@@ -154,53 +174,79 @@ df_groups <- df_errors %>%
 ```{r count-steps}
 
 print('Number of steps per jar per participant')
-table(df_steps$PID, df_steps$JAR)
+table(df_step_instances$PID, df_step_instances$STEP, df_step_instances$JAR)
 
 
 ## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR]
-df_steps %>% 
+## 
+df_step_instances %>% 
   ggplot(aes(x=PID, fill=JAR))+
     geom_bar(position="dodge") + 
   theme_minimal() + 
   labs(title = "Steps per JAR per Participant",
        subtitle = "(includes step repeats)")
 
-## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR facet FORMAT]
-df_steps %>% 
-  ggplot(aes(x=PID, fill=JAR))+
+# ## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR facet FORMAT]
+# df_step_instances %>% 
+#   ggplot(aes(x=PID, fill=JAR))+
+#     geom_bar(position="dodge") + 
+#   facet_wrap(~FORMAT) + 
+#   theme_minimal() + 
+#   labs(title = "Steps per JAR per Participant BY FORMAT",
+#        subtitle = "(includes step repeats)")
+
+
+## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by FORMAT]
+## 
+df_step_instances %>% 
+  ggplot(aes(x=PID, fill=FORMAT))+
     geom_bar(position="dodge") + 
-  facet_wrap(~FORMAT) + 
   theme_minimal() + 
-  labs(title = "Steps per JAR per Participant BY FORMAT",
+  labs(title = "Steps per FORMAT per Participant",
        subtitle = "(includes step repeats)")
-
-
 ```
 
 ### DURATION STEPS 
 ```{r duration-steps}
 
-df_steps %>% gf_histogram(~DURATION) +
-  facet_grid(JAR~FORMAT) + 
-  theme_minimal() + 
-  labs(title = "Distribution of STEP DURATION")
+## SET DATAFRAME
+df <- df_step_instances
+
+df_by_step <- df |> 
+  group_by(PID,STEP,JAR,FORMAT) |> 
+  summarise(
+    STEP_DURATION = sum(DURATION)
+ )
+
+df_by_step %>% gf_histogram(~STEP_DURATION, binwidth = 5) +
+  facet_grid(JAR~FORMAT) +
+  theme_minimal() +
+  labs(title = "Distribution of STEP DURATION (SUMMED BY")
 
 
-## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR]
-df_steps %>% 
-  ggplot(aes(x=PID, fill=JAR))+
-    geom_bar(position="dodge") + 
+
+## NOTE: is NOT summed (ie treats repeats the same)
+# df_step_instances %>% gf_histogram(~DURATION, binwidth = 5) +
+#   facet_grid(JAR~FORMAT) +
+#   theme_minimal() +
+#   labs(title = "Distribution of STEP DURATION")
+
+
+## GROUPED BARCHART [SUM STEP DURATION X PARTICIPANT by JAR]
+df_step_instances %>% 
+  ggplot(aes(fill=JAR))+
+    geom_bar(aes(x=PID, y= DURATION), position="dodge", stat="identity") + 
   theme_minimal() + 
-  labs(title = "Steps per JAR per Participant",
+  labs(title = "Total step DURATION per JAR per Participant",
        subtitle = "(includes step repeats)")
 
-## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR facet FORMAT]
-df_steps %>% 
-  ggplot(aes(x=PID, fill=JAR))+
-    geom_bar(position="dodge") + 
-  facet_wrap(~FORMAT) + 
+## GROUPED BARCHART [SUM STEP DURATION X PARTICIPANT by JAR facet FORMAT]
+df_step_instances %>% 
+    ggplot(aes(fill=FORMAT))+
+    geom_bar(aes(x=PID, y= DURATION), position="dodge", stat="identity") + 
+  # facet_wrap(~FORMAT) +
   theme_minimal() + 
-  labs(title = "Steps per JAR per Participant BY FORMAT",
+  labs(title = "Total step DURATION per FORMAT per Participant",
        subtitle = "(includes step repeats)")
 
 
@@ -214,7 +260,7 @@ df_steps %>%
 ### DURATION FORMATS
 ```{r duration-formats}
 
-df <- df_steps %>% 
+df <- df_step_instances %>% 
   group_by(PID, FORMAT,JAR) %>% 
   summarise(
     time = sum(DURATION)
@@ -231,6 +277,22 @@ df %>% ggplot(aes(x=FORMAT, y=time)) +
   labs(title = "JAR duration by FORMAT",
        subtitle="line indicates participant")
   
+
+df <- df_by_step |> 
+  group_by(PID, FORMAT, JAR) |> 
+  summarise(
+    time = sum(STEP_DURATION)
+  )
+
+df %>% ggplot(aes(x=FORMAT, y=time)) +
+  geom_jitter(alpha=0.4, width=0.00, aes(color=JAR)) + 
+  geom_line(aes(group=PID))+
+  theme_minimal() + 
+  labs(title = "JAR duration by FORMAT",
+       subtitle="line indicates participant")
+
+
+
 
 ```
 
@@ -321,6 +383,12 @@ df %>%
 ## QUESTIONS 
 
 
+### STEPS/ERRORS
+
+- Do ppl who have fewer step repeats have more errors?
+(visualization of ERRORS X STEP frequency by person)
+
+
 
 ### STRATEGY
 
@@ -337,3 +405,7 @@ df %>%
 
 ### SPEED/ACCURACY 
 
+
+
+## TODO
+### EXPORTS
