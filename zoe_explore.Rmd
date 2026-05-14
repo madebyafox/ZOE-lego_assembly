@@ -302,10 +302,10 @@ df %>% ggplot(aes(x=FORMAT, y=time)) +
 ## ERRORS
 ### COUNT ERRORS 
 ```{r count-errors}
-df <- df_groups
+df <- df_error_groups
 
 print('Number of errors per jar per participant')
-table(df$PID, df$JAR)
+table(df$PID, df$JAR, df$FORMAT)
 
 
 ## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by JAR]
@@ -339,7 +339,12 @@ df %>%
   theme_minimal() + 
   labs(title = "Errors by FORMAT and TYPE")
 
-
+## GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
+df %>% 
+  ggplot(aes(x=FORMAT, fill=ERROR))+
+    geom_bar(position="dodge") + 
+  theme_minimal() + 
+  labs(title = "Errors by FORMAT and ERROR CODE")
 
 ## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT facet FORMAT X JAR]
 df %>% 
