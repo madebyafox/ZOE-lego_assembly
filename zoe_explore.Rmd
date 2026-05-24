@@ -33,6 +33,8 @@ library(dplyr) #all the things
 library(lubridate) #timey-wimey
 library(ggformula) #regression syntax viz
 library(Hmisc) # %nin% operator
+library(svglite)
+
 
 ```
 
@@ -108,6 +110,11 @@ df_steps <- df_steps_raw %>%
   droplevels()
 
 
+## FOR STEP DURATION GRAPHS
+df_steps_dur <- df_steps_raw %>% 
+  filter(STEP %nin% c("Step Repeat")) |> 
+  droplevels()
+
 ## TODO round up ms instead of truncate on timestamps 
 
 
@@ -138,6 +145,8 @@ df_errors_raw <- read_csv("data/input/wip_errors.csv", col_select =
     ## strip weird end stuff from times
     separate(END, into = c("END", "JUNK"), sep = ',') %>% 
     separate(START, into = c("START", "JUNK"), sep = ',')  %>% 
+  ## FILTER OUT P11 [APP ONLY CONTROL] // P18 [BOOK ONLY CONTROL]
+  filter(PID %nin% c("P11", "P18"))%>% 
   mutate(
     PID = as_factor(PID),
     JAR = as_factor(JAR),
@@ -165,7 +174,7 @@ df_errors_raw$FORMAT <- fct_recode(df_errors_raw$FORMAT,
 ## Error Recovery portion of time when a participant is remediating the error // 
 ## Unresolved Completion is dual/triple coded with the original error code if they don't recover from it (co-occurs w/ error type)
 ## only frequency; step codes intersection is not going to be accurate bc it will overlap with wrong step code
-df_error_recoveries <- df_errors %>% 
+df_error_recoveries <- df_errors_raw %>% 
   filter(ERROR_GROUP %in% c("Error Recovery", "Unresolved Upon Completion")) %>% 
   rename(
     "RECOVERY" = "ERROR_GROUP"
@@ -192,91 +201,118 @@ write.csv(df_errors,"data/output/df_errors.csv", row.names = FALSE)
 
 ```
 
-### TODO HARDCODE P11 & P18 handling
 
 ### TODO participant-level wrangling
 
-## STEPS
 
+## STEPS
 
 ### COUNT STEPS 
 ```{r count-steps}
 
+## SET DATAFRAME
+df <- df_steps
+
 print('Number of steps per jar per participant')
-table(df_step_instances$PID, df_step_instances$STEP, df_step_instances$JAR)
+table(df$PID, df$JAR)
 
 
 ## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR]
 ## 
-df_step_instances %>% 
+df %>% 
   ggplot(aes(x=PID, fill=JAR))+
     geom_bar(position="dodge") + 
+  scale_fill_brewer(palette="Paired", direction =-1) +
   theme_minimal() + 
   labs(title = "Steps per JAR per Participant",
        subtitle = "(includes step repeats)")
 
-# ## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR facet FORMAT]
-# df_step_instances %>% 
-#   ggplot(aes(x=PID, fill=JAR))+
-#     geom_bar(position="dodge") + 
-#   facet_wrap(~FORMAT) + 
-#   theme_minimal() + 
-#   labs(title = "Steps per JAR per Participant BY FORMAT",
-#        subtitle = "(includes step repeats)")
-
-
 ## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by FORMAT]
 ## 
-df_step_instances %>% 
+df %>% 
   ggplot(aes(x=PID, fill=FORMAT))+
     geom_bar(position="dodge") + 
+      scale_fill_brewer(palette="Set2", direction =-1) +
   theme_minimal() + 
   labs(title = "Steps per FORMAT per Participant",
        subtitle = "(includes step repeats)")
+
+
+
+# ## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR facet FORMAT]
+g <- df %>%
+  ggplot(aes(x=PID, fill=JAR))+
+    geom_bar(position="dodge") +
+  scale_fill_brewer(palette="Paired", direction =-1) +
+  facet_wrap(~FORMAT) +
+  theme_minimal() +
+  labs(title = "Steps per JAR per Participant BY FORMAT",
+       subtitle = "(includes step repeats)")
+
+
+g
+ggsave(
+  filename = "figs/step_counts_by_format.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
+
 ```
 
 ### DURATION STEPS 
 
 - flipping tapping through fast, should NOT be included in step level duration, but SHOULD be included in participant level duration
-```{r duration-steps}
+```{r duration-steps, warning=FALSE}
 
 ## SET DATAFRAME
-df <- df_step_instances
+df <- df_steps
 
+## grouping by participant, jar, format to get duration by step
 df_by_step <- df |> 
   group_by(PID,STEP,JAR,FORMAT) |> 
   summarise(
     STEP_DURATION = sum(DURATION)
  )
 
-df_by_step %>% gf_histogram(~STEP_DURATION, binwidth = 5) +
+
+
+## DISTRIBUTION OF DURATION BY STEP
+g <- df_by_step %>% gf_histogram(~STEP_DURATION, binwidth = 5) +
   facet_grid(JAR~FORMAT) +
   theme_minimal() +
-  labs(title = "Distribution of STEP DURATION (SUMMED BY")
+  labs(title = "Distribution of STEP DURATION (in seconds)")
 
-
-
-## NOTE: is NOT summed (ie treats repeats the same)
-# df_step_instances %>% gf_histogram(~DURATION, binwidth = 5) +
-#   facet_grid(JAR~FORMAT) +
-#   theme_minimal() +
-#   labs(title = "Distribution of STEP DURATION")
+g 
+ggsave(
+  filename = "figs/step_duration_distribution.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
 
 
 ## GROUPED BARCHART [SUM STEP DURATION X PARTICIPANT by JAR]
-df_step_instances %>% 
+df_steps_dur %>% 
   ggplot(aes(fill=JAR))+
     geom_bar(aes(x=PID, y= DURATION), position="dodge", stat="identity") + 
+  scale_fill_brewer(palette="Paired", direction =-1) +
   theme_minimal() + 
   labs(title = "Total step DURATION per JAR per Participant",
        subtitle = "(includes step repeats)")
 
 ## GROUPED BARCHART [SUM STEP DURATION X PARTICIPANT by JAR facet FORMAT]
-df_step_instances %>% 
+df_steps_dur %>%
     ggplot(aes(fill=FORMAT))+
-    geom_bar(aes(x=PID, y= DURATION), position="dodge", stat="identity") + 
+    scale_fill_brewer(palette="Set2", direction =-1) +
+    geom_bar(aes(x=PID, y= DURATION), position="dodge", stat="identity") +
   # facet_wrap(~FORMAT) +
-  theme_minimal() + 
+  theme_minimal() +
   labs(title = "Total step DURATION per FORMAT per Participant",
        subtitle = "(includes step repeats)")
 
@@ -288,10 +324,13 @@ df_step_instances %>%
 
 
 
-### DURATION FORMATS
+### DURATION STEPS LINE 
 ```{r duration-formats}
 
-df <- df_step_instances %>% 
+
+
+
+df <- df_steps%>% 
   group_by(PID, FORMAT,JAR) %>% 
   summarise(
     time = sum(DURATION)
@@ -309,23 +348,18 @@ df %>% ggplot(aes(x=FORMAT, y=time)) +
        subtitle="line indicates participant")
   
 
-df <- df_by_step |> 
-  group_by(PID, FORMAT, JAR) |> 
-  summarise(
-    time = sum(STEP_DURATION)
-  )
 
 df %>% ggplot(aes(x=FORMAT, y=time)) +
-  geom_jitter(alpha=0.4, width=0.00, aes(color=JAR)) + 
+  geom_jitter(alpha=0.4, width=0.00, aes(color=PID)) + 
   geom_line(aes(group=PID))+
   theme_minimal() + 
   labs(title = "JAR duration by FORMAT",
        subtitle="line indicates participant")
-
-
+  
 
 
 ```
+
 
 
 
@@ -416,9 +450,15 @@ df %>%
 ```
 
 
+
+
+
+
+## PARTICIPANT LEVEL 
+
+
+
 ## QUESTIONS 
-
-
 ### STEPS/ERRORS
 
 - Do ppl who have fewer step repeats have more errors?
@@ -444,14 +484,8 @@ df %>%
 
 
 
-## EXPORTS
-
-```{r exports}
 
 
-# write.csv(df_ospan,"data/output/df_steps.csv", row.names = FALSE)
-
-```
 
 
 
