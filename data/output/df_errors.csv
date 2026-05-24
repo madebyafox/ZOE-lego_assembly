@@ -1,0 +1,141 @@
+"PID","JAR","FORMAT","ERROR_TYPE","ERROR","START","END","DURATION"
+"P01","jar1","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:03:07,00:03:12,5
+"P01","jar1","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:03:59,00:04:02,3
+"P01","jar1","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:04:02,00:04:05,3
+"P01","jar1","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:04:06,00:04:29,23
+"P01","jar1","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:05:23,00:05:35,12
+"P01","jar1","BOOKLET","Piece Selection Errors","Missed/Skipped Piece",00:05:34,00:05:36,2
+"P01","jar1","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:10:33,00:10:39,6
+"P01","jar1","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:12:43,00:12:48,5
+"P01","jar2","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:01:20,00:01:23,3
+"P01","jar2","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:06:13,00:07:28,75
+"P01","jar2","APP","Placement Errors","Carry-forward Incorrect Placement",00:10:20,00:10:31,11
+"P01","jar2","APP","Placement Errors","Carry-forward Incorrect Placement",00:10:31,00:10:44,13
+"P01","jar2","APP","Placement Errors","Carry-forward Incorrect Placement",00:10:44,00:10:50,6
+"P01","jar2","APP","Placement Errors","Carry-forward Incorrect Placement",00:10:51,00:10:55,4
+"P01","jar2","APP","Spatial Transformation Errors","Piece Orientation Error",00:21:38,00:21:40,2
+"P02","jar1","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:04:36,00:04:40,4
+"P02","jar1","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:06:04,00:06:13,9
+"P02","jar1","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:06:43,00:06:52,9
+"P02","jar2","APP","Spatial Transformation Errors","Piece Orientation Error",00:15:05,00:15:08,3
+"P03","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:03:51,00:03:59,8
+"P03","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:03:59,00:04:03,4
+"P03","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:04:03,00:04:11,8
+"P03","jar2","BOOKLET","Piece Selection Errors","Incorrect Piece",00:10:24,00:11:01,37
+"P03","jar2","BOOKLET","Piece Selection Errors","Incorrect Piece",00:11:01,00:11:07,6
+"P03","jar2","BOOKLET","Piece Selection Errors","Incorrect Piece",00:13:39,00:14:26,47
+"P03","jar2","BOOKLET","Piece Selection Errors","Incorrect Piece",00:14:26,00:14:31,5
+"P03","jar2","BOOKLET","Piece Selection Errors","Missed/Skipped Piece",00:17:45,00:17:53,8
+"P04","jar1","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:05:45,00:05:51,6
+"P04","jar1","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:06:07,00:06:15,8
+"P04","jar1","APP","Placement Errors","Missed Reassembly Part",00:06:58,00:07:09,11
+"P04","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:10:01,00:10:07,6
+"P04","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:12:20,00:12:28,8
+"P04","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:13:26,00:13:33,7
+"P04","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:27:55,00:28:01,6
+"P04","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:28:01,00:28:07,6
+"P05","jar1","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:01:04,00:01:12,8
+"P05","jar1","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:01:14,00:01:18,4
+"P05","jar1","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:07:15,00:07:24,9
+"P05","jar1","BOOKLET","Placement Errors","Placement On Incorrect Piece(s)",00:14:21,00:14:25,4
+"P05","jar1","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:14:29,00:14:31,2
+"P05","jar1","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:14:31,00:14:35,4
+"P05","jar2","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:03:33,00:03:43,10
+"P05","jar2","APP","Piece Selection Errors","Incorrect Piece",00:07:29,00:07:35,6
+"P06","jar1","APP","Piece Selection Errors","Incorrect Piece",00:02:38,00:02:45,7
+"P06","jar1","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:04:33,00:04:40,7
+"P06","jar1","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:04:40,00:04:45,5
+"P06","jar1","APP","Piece Selection Errors","Missed/Skipped Piece",00:07:28,00:08:01,33
+"P06","jar1","APP","Spatial Transformation Errors","Model Orientation Error",00:08:56,00:09:04,8
+"P06","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:12:14,00:12:28,14
+"P06","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:13:16,00:13:23,7
+"P06","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:13:23,00:13:26,3
+"P06","jar2","BOOKLET","Spatial Transformation Errors","Model Orientation Error",00:13:34,00:13:52,18
+"P07","jar1","BOOKLET","Piece Selection Errors","Incorrect Piece",00:00:48,00:01:27,39
+"P07","jar1","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:10:51,00:10:56,5
+"P07","jar2","APP","Piece Selection Errors","Incorrect Piece",00:09:46,00:09:49,3
+"P08","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:16:44,00:16:51,7
+"P08","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:16:51,00:17:02,11
+"P09","jar1","BOOKLET","Piece Selection Errors","Incorrect Piece",00:04:12,00:04:17,5
+"P09","jar1","BOOKLET","Piece Selection Errors","Incorrect Piece",00:04:24,00:04:54,30
+"P09","jar1","BOOKLET","Piece Selection Errors","Missed/Skipped Piece",00:11:30,00:11:37,7
+"P09","jar1","BOOKLET","Piece Selection Errors","Incorrect Piece",00:18:30,00:18:36,6
+"P10","jar1","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:07:13,00:07:18,5
+"P10","jar1","BOOKLET","Piece Selection Errors","Incorrect Piece",00:07:13,00:08:00,47
+"P10","jar1","BOOKLET","Piece Selection Errors","Incorrect Piece",00:08:32,00:08:40,8
+"P10","jar2","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:03:10,00:03:16,6
+"P10","jar2","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:03:16,00:03:20,4
+"P10","jar2","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:03:20,00:03:32,12
+"P10","jar2","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:06:57,00:07:07,10
+"P10","jar2","APP","Placement Errors","Carry-forward Incorrect Placement",00:10:50,00:10:53,3
+"P10","jar2","APP","Placement Errors","Carry-forward Incorrect Placement",00:12:55,00:13:00,5
+"P10","jar2","APP","Placement Errors","Carry-forward Incorrect Placement",00:13:00,00:13:03,3
+"P10","jar2","APP","Placement Errors","Carry-forward Incorrect Placement",00:13:03,00:13:08,5
+"P10","jar2","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:15:03,00:15:07,4
+"P10","jar2","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:15:07,00:15:15,8
+"P10","jar2","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:15:21,00:15:30,9
+"P10","jar2","APP","Spatial Transformation Errors","Piece Orientation Error",00:18:29,00:18:32,3
+"P10","jar2","APP","Spatial Transformation Errors","Piece Orientation Error",00:18:36,00:18:38,2
+"P10","jar2","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:20:29,00:20:32,3
+"P10","jar2","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:20:32,00:20:37,5
+"P10","jar2","APP","Spatial Transformation Errors","Piece Orientation Error",00:21:06,00:21:08,2
+"P10","jar2","APP","Spatial Transformation Errors","Piece Orientation Error",00:21:08,00:21:11,3
+"P10","jar2","APP","Placement Errors","Carry-forward Incorrect Placement",00:21:22,00:21:32,10
+"P10","jar2","APP","Placement Errors","Carry-forward Incorrect Placement",00:21:32,00:21:48,16
+"P10","jar2","APP","Spatial Transformation Errors","Piece Orientation Error",00:21:53,00:21:59,6
+"P10","jar2","APP","Piece Selection Errors","Incorrect Piece",00:22:08,00:22:13,5
+"P10","jar2","APP","Piece Selection Errors","Incorrect Piece",00:22:20,00:22:25,5
+"P10","jar2","APP","Placement Errors","Carry-forward Incorrect Placement",00:22:40,00:22:45,5
+"P10","jar2","APP","Placement Errors","Carry-forward Incorrect Placement",00:22:46,00:22:52,6
+"P10","jar2","APP","Spatial Transformation Errors","Piece Orientation Error",00:23:49,00:23:52,3
+"P10","jar2","APP","Piece Selection Errors","Missed/Skipped Piece",00:24:03,00:24:04,1
+"P12","jar1","BOOKLET","Piece Selection Errors","Missed/Skipped Piece",00:08:33,00:08:37,4
+"P12","jar1","BOOKLET","Piece Selection Errors","Missed/Skipped Piece",00:14:25,00:14:25,0
+"P12","jar1","BOOKLET","Piece Selection Errors","Missed/Skipped Piece",00:14:25,00:14:25,0
+"P12","jar2","APP","Spatial Transformation Errors","Piece Orientation Error",00:08:13,00:08:19,6
+"P12","jar2","APP","Spatial Transformation Errors","Piece Orientation Error",00:15:56,00:16:02,6
+"P13","jar1","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:03:29,00:03:31,2
+"P13","jar1","APP","Spatial Transformation Errors","Piece Orientation Error",00:03:32,00:03:35,3
+"P13","jar1","APP","Spatial Transformation Errors","Piece Orientation Error",00:03:36,00:03:39,3
+"P13","jar1","APP","Placement Errors","Placement On Incorrect Piece(s)",00:08:37,00:08:42,5
+"P13","jar1","APP","Spatial Transformation Errors","Piece Orientation Error",00:09:49,00:09:57,8
+"P13","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:00:51,00:00:58,7
+"P13","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:06:08,00:06:14,6
+"P13","jar2","BOOKLET","Placement Errors","Carry-forward Incorrect Placement",00:07:33,00:07:42,9
+"P13","jar2","BOOKLET","Placement Errors","Carry-forward Incorrect Placement",00:07:42,00:07:48,6
+"P13","jar2","BOOKLET","Placement Errors","Carry-forward Incorrect Placement",00:07:50,00:08:15,25
+"P13","jar2","BOOKLET","Placement Errors","Carry-forward Incorrect Placement",00:08:15,00:08:22,7
+"P13","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:12:41,00:12:53,12
+"P13","jar2","BOOKLET","Piece Selection Errors","Missed/Skipped Piece",00:12:58,00:12:59,1
+"P13","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:13:25,00:13:34,9
+"P13","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:13:46,00:13:49,3
+"P13","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:14:52,00:14:59,7
+"P13","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:15:05,00:15:07,2
+"P13","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:15:07,00:15:12,5
+"P13","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:15:18,00:15:22,4
+"P13","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:15:22,00:15:25,3
+"P13","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:15:29,00:15:32,3
+"P14","jar1","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:03:20,00:03:23,3
+"P14","jar1","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:05:20,00:05:24,4
+"P14","jar1","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:05:24,00:05:26,2
+"P14","jar1","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:05:27,00:05:34,7
+"P14","jar2","BOOKLET","Piece Selection Errors","Missed/Skipped Piece",00:05:01,00:05:02,1
+"P14","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:10:48,00:10:51,3
+"P14","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:11:03,00:11:06,3
+"P15","jar1","BOOKLET","Piece Selection Errors","Incorrect Piece",00:01:42,00:01:47,5
+"P16","jar1","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:07:30,00:07:34,4
+"P16","jar2","BOOKLET","Piece Selection Errors","Incorrect Piece",00:04:52,00:04:55,3
+"P17","jar1","APP","Piece Selection Errors","Incorrect Piece",00:02:03,00:02:24,21
+"P17","jar1","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:18:13,00:18:21,8
+"P17","jar1","APP","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:18:30,00:18:39,9
+"P17","jar1","APP","Piece Selection Errors","Unnecessary Piece",00:18:39,00:19:16,37
+"P17","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:06:15,00:06:19,4
+"P17","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:06:19,00:06:24,5
+"P17","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:06:24,00:06:31,7
+"P17","jar2","BOOKLET","Piece Selection Errors","Missed/Skipped Piece",00:08:05,00:08:52,47
+"P17","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:09:52,00:09:56,4
+"P17","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:09:56,00:09:59,3
+"P17","jar2","BOOKLET","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union",00:10:00,00:10:06,6
+"P17","jar2","BOOKLET","Piece Selection Errors","Missed/Skipped Piece",00:23:04,00:23:07,3
+"P17","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:25:44,00:25:47,3
+"P17","jar2","BOOKLET","Spatial Transformation Errors","Piece Orientation Error",00:25:48,00:25:56,8
