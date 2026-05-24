@@ -367,7 +367,7 @@ df %>% ggplot(aes(x=FORMAT, y=time)) +
 ## ERRORS
 ### COUNT ERRORS 
 ```{r count-errors}
-df <- df_error_groups
+df <- df_errors
 
 print('Number of errors per jar per participant')
 table(df$PID, df$JAR, df$FORMAT)
