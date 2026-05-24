@@ -1,6 +1,6 @@
 ---
-title: "x"
-author: "Amy & Zoe"
+title: "Lego Assembly Thesis Analysis"
+author: "Amy Rae Fox & Zoe Kothari"
 date: "2026-05-06"
 output:
   html_document:
@@ -361,7 +361,7 @@ df %>%
 
 ### COUNT ERROR RECOVERY 
 ```{r count-recoveries}
-df <- df_recoveries
+df <- df_error_recoveries
 
 print('Number of recovery type per jar per participant')
 table(df$PID, df$JAR, df$RECOVERY)
