@@ -38,7 +38,10 @@ library(Hmisc) # %nin% operator
 
 ```{r import-steps}
 
-df_steps <- read_csv("data/input/wip_steps.csv", col_select = 
+## DF_STEPS_RAW
+## maxQDA export of all retrieved segments for the query (all documents) + (highest level step code [includes each numbered step + Step Repeat + Flipping/Tapping Through Fast])
+## NOTE: need to handle Step Repeat + Flipping/Tapping Through Fast seperately 
+df_steps_raw <- read_csv("data/input/wip_steps.csv", col_select = 
                        c(`Document name`,
                          `Code`,
                         `Beginning`,
@@ -67,41 +70,59 @@ df_steps <- read_csv("data/input/wip_steps.csv", col_select =
   ) |> 
 ## FILTER OUT P11 [APP ONLY CONTROL] // P18 [BOOK ONLY CONTROL]
   filter(PID %nin% c("P11", "P18"))%>% 
+## REORDER STEP FACTOR LEVELS
+  mutate(
+    STEP = fct_relevel(STEP, "Step 0A","Step 0B")
+  ) |> 
   select(-JUNK, -MASTER_STEP) |> 
   droplevels()
 
 
 ## RENAME INSTRUCTION TYPES
-df_steps$FORMAT <- fct_recode(df_steps$FORMAT, 
+df_steps_raw$FORMAT <- fct_recode(df_steps_raw$FORMAT, 
                             "APP" = 'A', 
-                            "BOOK" = 'B')
+                            "BOOKLET" = 'B')
+
+## DF_STEP_REPEATS
+## The Step Repeat is a dual code (alongside the numbered step), applied whenever a participant meaninfully repeated the actions of a step while looking at the instructions for the step (e.g. potentially during an error recovery) 
+## NOT included in PARTICIPANT count of steps (dual code would add doubles) 
+## NOT included in PARTICIPANT step-level duration (dual code would add doubles)
+df_step_repeats <- df_steps_raw |> 
+  filter( STEP == "Step Repeat")
 
 
+## DF_STEP_FLIPPING
+## The 'Flipping/Tapping Through Fast code indicates when participant is engaging with instructions in order to navigate to a different point rather than meaningfully with THAT step
+## TODO flipping/tapping SHOULD be included in Participant level total step duration 
+## TODO flipping/tapping SHOULD NOT be included in Participant level step count 
+df_step_flipping <- df_steps_raw |> 
+  filter( STEP == "Flipping/Tapping Through Fast")
 
-## DF instances of each step code excluding (dual-coded) step repeat + flip
-df_step_instances <- df_steps %>% 
+
+##DF_STEPS
+##data frame for time coded on a step; includes 'repeats' but not explicitly coded as repeat
+## instances of each step code excluding (dual-coded) step repeat + flip
+## primary DF for step level analysis
+df_steps <- df_steps_raw %>% 
   filter(STEP %nin% c("Step Repeat", "Flipping/Tapping Through Fast")) |> 
   droplevels()
 
 
-
-## REFERENCE CONDITIONAL MUTATE SYNTAX
- # mutate(grade = case_when(
- #    score >= 90 ~ "A",
- #    score >= 80 ~ "B",
- #    TRUE ~ "C"  # Default value
- #  ))
-
-
-## TODO re-order step levels (eg 0A, 0B, Step 1)
 ## TODO round up ms instead of truncate on timestamps 
+
+
+## EXPORT DF_STEPS
+write.csv(df_steps,"data/output/df_steps.csv", row.names = FALSE)
+
 
 ```
 
 ```{r import-errors}
 
 ##import errors
-df_errors <- read_csv("data/input/wip_errors.csv", col_select = 
+## maxQDA export of all retrieved segments for the query (all documents) + (highest level Errors group code [deselect Error Pairs])
+## includes error-codes + Error Types + Error Recovery
+df_errors_raw <- read_csv("data/input/wip_errors.csv", col_select = 
                        c(`Document name`,
                          `Code`,
                         `Beginning`,
@@ -131,13 +152,18 @@ df_errors <- read_csv("data/input/wip_errors.csv", col_select =
   
     
 ## RENAME INSTRUCTION TYPES
-df_errors$FORMAT <- fct_recode(df_errors$FORMAT, 
+df_errors_raw$FORMAT <- fct_recode(df_errors_raw$FORMAT, 
                             "APP" = 'A', 
-                            "BOOK" = 'B')
+                            "BOOKLET" = 'B')
 
 
-## get error recoveries-non-recoveries 
-## TODO document what the purpose of this df is
+## participant level total error count --> sum df_errors w/o error recovery or unresolved 
+## participant level unresolved error code --> sum UNRESOLVED UPON COMPLETION 
+
+
+## DF_ERROR_RECOVERIES
+## Error Recovery portion of time when a participant is remediating the error // 
+## Unresolved Completion is dual/triple coded with the original error code if they don't recover from it (co-occurs w/ error type)
 ## only frequency; step codes intersection is not going to be accurate bc it will overlap with wrong step code
 df_error_recoveries <- df_errors %>% 
   filter(ERROR_GROUP %in% c("Error Recovery", "Unresolved Upon Completion")) %>% 
@@ -146,20 +172,23 @@ df_error_recoveries <- df_errors %>%
   ) %>% 
   select(-ERROR_TYPE, -ERROR)
 
-## get just top level error codes
-df_error_groups <- df_errors %>% 
-  filter(ERROR_GROUP %nin% c("Error Recovery", "Unresolved Upon Completion")) 
+##DF_ERRORS
+##data frame for number of errors; was coded while they were MAKING the error
+## more precise durational data about errors should come from the error-pairs extract 
+## primary DF for error analysis
+df_errors <- df_errors_raw %>% 
+  filter(ERROR_GROUP %nin% c("Error Recovery", "Unresolved Upon Completion")) |> 
+  select(-ERROR_GROUP)
   # select(-ERROR_TYPE, -ERROR)
 
 
+## TODO error-step reconcilliation
+## TODO EITHER get error-pairs extract from maxqda & parse 
+## OR get step code overlap from additional code columns in THIS extract 
 
-## REFERENCE CONDITIONAL MUTATE SYNTAX
- # mutate(grade = case_when(
- #    score >= 90 ~ "A",
- #    score >= 80 ~ "B",
- #    TRUE ~ "C"  # Default value
- #  ))
 
+## EXPORT DF_ERRORS
+write.csv(df_errors,"data/output/df_errors.csv", row.names = FALSE)
 
 ```
 
@@ -207,6 +236,8 @@ df_step_instances %>%
 ```
 
 ### DURATION STEPS 
+
+- flipping tapping through fast, should NOT be included in step level duration, but SHOULD be included in participant level duration
 ```{r duration-steps}
 
 ## SET DATAFRAME
@@ -412,5 +443,30 @@ df %>%
 
 
 
-## TODO
-### EXPORTS
+
+## EXPORTS
+
+```{r exports}
+
+
+# write.csv(df_ospan,"data/output/df_steps.csv", row.names = FALSE)
+
+```
+
+
+
+
+## STASH
+
+```{r stash}
+
+## REFERENCE CONDITIONAL MUTATE SYNTAX
+ # mutate(grade = case_when(
+ #    score >= 90 ~ "A",
+ #    score >= 80 ~ "B",
+ #    TRUE ~ "C"  # Default value
+ #  ))
+
+
+
+```
