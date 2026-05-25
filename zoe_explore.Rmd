@@ -33,9 +33,18 @@ library(dplyr) #all the things
 library(lubridate) #timey-wimey
 library(ggformula) #regression syntax viz
 library(Hmisc) # %nin% operator
-library(svglite)
+library(svglite) #saving ggplots as svgs
 
-
+## modelling
+library(lme4) #regression models
+library(lmerTest) #regression models
+library(sjPlot) #model plots
+library(ggdist) #distributional viz
+library(performance) #easyStats compare models
+library(report) # ez reporting
+library(insight) #ez model info 
+library(glmmTMB) #negative binomial glm model 
+library(broom.mixed) #tidy model tables mixed effects
 ```
 
 ```{r import-steps}
@@ -221,19 +230,18 @@ df_participants_raw <- read_csv("data/input/participants.csv",
   
 ## corsi backward span score == length of the longest sequence of colored blocks for which the participant successfully recalled at least one of the trials 
 
+
 ## EXPORT DF_ERRORS
-write.csv(df_errors,"data/output/df_errors.csv", row.names = FALSE)
+# write.csv(df_errors,"data/output/df_errors.csv", row.names = FALSE)
 
 ```
 
-
-
 ### TODO participant-level wrangling
-
 
 ## STEPS
 
-### COUNT STEPS 
+### COUNT STEPS
+
 ```{r count-steps}
 
 ## SET DATAFRAME
@@ -289,9 +297,11 @@ ggsave(
 
 ```
 
-### DURATION STEPS 
+### DURATION STEPS
 
-- flipping tapping through fast, should NOT be included in step level duration, but SHOULD be included in participant level duration
+-   flipping tapping through fast, should NOT be included in step level
+    duration, but SHOULD be included in participant level duration
+
 ```{r duration-steps, warning=FALSE}
 
 ## SET DATAFRAME
@@ -345,12 +355,8 @@ df_steps_dur %>%
 
 ```
 
+### DURATION STEPS LINE
 
-
-
-
-
-### DURATION STEPS LINE 
 ```{r duration-formats}
 
 
@@ -386,12 +392,10 @@ df %>% ggplot(aes(x=FORMAT, y=time)) +
 
 ```
 
-
-
-
-
 ## ERRORS
-### COUNT ERRORS 
+
+### COUNT ERRORS
+
 ```{r count-errors}
 df <- df_errors
 
@@ -481,7 +485,8 @@ ggsave(
 
 ```
 
-### COUNT ERROR RECOVERY 
+### COUNT ERROR RECOVERY
+
 ```{r count-recoveries}
 df <- df_error_recoveries
 
@@ -506,44 +511,397 @@ df %>%
   labs(title = "Errors RECOVERY by FORMAT")
 ```
 
+## OPEN QUESTIONS
 
-
-
-
-
-## TODO PARTICIPANT LEVEL 
-
-
-
-## QUESTIONS 
 ### STEPS/ERRORS
 
-- Do ppl who have fewer step repeats have more errors?
-(visualization of ERRORS X STEP frequency by person)
-
-
+-   Do ppl who have fewer step repeats have more errors? (visualization
+    of ERRORS X STEP frequency by person)
 
 ### STRATEGY
 
-#### organization 
+#### organization
 
 #### strategy X errors
-- Will pre-sorting by jar result in less piece selection errors?
+
+-   Will pre-sorting by jar result in less piece selection errors?
+
+-   'flip everything up at start' less piece selection errors?
+
+-   does model matching correspond with less (spatial transformation)
+    errors?
+
+### SPEED/ACCURACY
+
+## MODELS
+
+### Step Duration
+
+What predicts duration per step?
+
+```{r time-vis}
+
+## predict step time by format and participant
+df <- df_steps_dur %>% 
+  mutate(
+    dur = as.double(DURATION)
+  )
+
+## PLOT RAW DATA   
+## STRIP PLOT + MEAN LABEL
+ggplot(df, aes(x = FORMAT, y = dur, colour = FORMAT)) +
+  geom_boxplot(
+    aes(group = FORMAT),
+    width = 0.5,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    width = 0.1,
+    alpha = 0.6,
+    size = 0.5
+  ) +
+  # DISPLAY MEAN AS POINT
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 18,
+    size = 3,
+    colour = "black"
+  ) +
+  # MEAN LABEL
+  stat_summary(
+    fun = mean,
+    geom = "text",
+    aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
+    vjust = -0.8,
+    colour = "black",
+    size = 3
+  ) +
+  facet_wrap(~ JAR) +
+  theme_minimal() + 
+  labs(title = "Step Duration by Format & Jar",
+       y = "Duration (s)")
+
+```
+
+```{r model-time}
+
+## predict step time by format and participant
+df <- df_steps_dur %>% 
+  mutate(
+    dur = as.double(DURATION)
+  )
+
+## MODEL 1 | Simple Main Effects
+m1 <- lmer(dur ~ FORMAT + JAR + (1|PID), data = df)
+summary(m1)
+anova(m1)
+report(m1)
+
+## MODEL 2 | Interaction Main Effects
+# m2 <- lmer(dur ~ FORMAT * JAR + (1|PID), data = df)
+# summary(m2)
+# anova(m2)
+# compare_performance(m1,m2, rank = TRUE)
+## interaction model is not a better fit
+
+## PLOT MODEL ESTIMATES
+# plot_model(m1, show.values= TRUE, type = "re") # random effects
+ plot_model(m1, show.values= TRUE, type = "est", title = "Model Estimate (dur ~ FORMAT + JAR + (1|PID)")
+
+## DESCRIBE MODEL VARIANCE EXPLAINED
+v <- get_variance(m1)
+t <- v$var.fixed + v$var.random + v$var.residual
+fixed <- v$var.fixed/t * 100
+random <- v$var.random/t * 100
+residual <- v$var.residual/t * 100
+
+## MODEL TABLE
+m1_tab <- tidy(m1, effects = "fixed") %>%
+  mutate(
+    estimate  = round(estimate, 2),
+    std.error = round(std.error, 2),
+    statistic = round(statistic, 2),
+    p.value   = ifelse(
+      p.value < .001,
+      "< .001",
+      sprintf("= %.3f", p.value)
+    )
+  )
+format_row <- filter(m1_tab, term == "FORMATAPP")
+jar_row    <- filter(m1_tab, term == "JARjar2")
+int_row    <- filter(m1_tab, term == "(Intercept)")
+
+```
+
+A linear mixed-effects model was fit to predict step duration from
+FORMAT and JAR, with a random intercept for participant (PID).
+
+The effect of FORMAT was not statistically significant, β =
+`r format_row$estimate`, SE = `r format_row$std.error`, *t* =
+`r format_row$statistic`, *p* `r format_row$p.value`.
+
+In contrast, JAR significantly predicted step duration, β =
+`r jar_row$estimate`, SE = `r jar_row$std.error`, *t* =
+`r jar_row$statistic`, *p* `r jar_row$p.value`, indicating that steps
+performed in Jar 2 took approximately `r jar_row$estimate` seconds
+longer than those performed in Jar 1.
+
+The estimated mean duration in the reference condition was
+`r int_row$estimate` seconds (SE = `r int_row$std.error`).
+
+The participant-level variance was `r round(v$var.random, 2)` and the
+residual variance was `r round(v$var.residual, 2)`.
+
+*Fixed effects accounted for approximately
+`r round(100 * v$var.fixed / (v$var.fixed + v$var.random + v$var.residual), 1)`%
+of the total variance, participant-level differences accounted for
+`r round(100 * v$var.random / (v$var.fixed + v$var.random + v$var.residual), 1)`%,
+and
+`r round(100 * v$var.residual / (v$var.fixed + v$var.random + v$var.residual), 1)`%
+remained unexplained.*
+
+### Error Count
+What predicts number of errors?
+
+
+```{r setup-error-counts}
+
+## generate error counts df
+error_counts_obs <- df_errors %>%
+  count(PID, JAR, FORMAT, name = "n_errors")
+
+assignments <- error_counts_obs %>%
+  group_by(PID) %>%
+  slice(1) %>%
+  ungroup() %>%
+  mutate(
+    sequence = case_when(
+      (JAR == "jar1" & FORMAT == "APP") |
+      (JAR == "jar2" & FORMAT == "BOOKLET") ~ "A",
+
+      (JAR == "jar1" & FORMAT == "BOOKLET") |
+      (JAR == "jar2" & FORMAT == "APP") ~ "B"
+    )
+  )
+
+valid_conditions <- assignments %>%
+  select(PID, sequence) %>%
+  uncount(2) %>%
+  group_by(PID, sequence) %>%
+  mutate(
+    JAR = if_else(row_number() == 1, "jar1", "jar2"),
+    FORMAT = case_when(
+      sequence == "A" & JAR == "jar1" ~ "APP",
+      sequence == "A" & JAR == "jar2" ~ "BOOKLET",
+      sequence == "B" & JAR == "jar1" ~ "BOOKLET",
+      sequence == "B" & JAR == "jar2" ~ "APP"
+    )
+  ) %>%
+  ungroup() %>%
+  select(PID, JAR, FORMAT)
+
+error_counts <- valid_conditions %>%
+  left_join(
+    error_counts_obs,
+    by = c("PID", "JAR", "FORMAT")
+  ) %>%
+  mutate(
+    n_errors = replace_na(n_errors, 0)
+  ) %>%
+  arrange(PID, JAR)
+
+rm(error_counts_obs, valid_conditions)
+```
+
+```{r error-vis}
+
+## set dataframe
+df <- error_counts
+
+ggplot(error_counts,
+       aes(x = FORMAT,
+           y = n_errors,
+           colour = JAR)) +
+  geom_boxplot(
+    aes(group = FORMAT),
+    outlier.shape = NA
+  ) +
+  geom_jitter(width = 0.08, alpha = 0.6) +
+    # DISPLAY MEAN AS POINT
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 18,
+    size = 3,
+    colour = "black"
+  ) +
+  # MEAN LABEL
+  stat_summary(
+    fun = mean,
+    geom = "text",
+    aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
+    vjust = -0.8,
+    colour = "black",
+    size = 3
+  ) +
+  facet_wrap(~ JAR) +
+  theme_minimal() + 
+  labs(title = "Error Count by Format & Jar", 
+       y = "Number of Errors")
+
+
+## INDIVIDUAL DIFFERENCES BY JAR
+ggplot(df, aes(x = JAR, y = n_errors, group = PID)) +
+  geom_line(alpha = 0.35) +
+  geom_point(size = 2, alpha = 0.8) +
+  theme_bw() +
+  labs(
+    x = "Jar",
+    y = "Error Count"
+  )+ 
+  theme_minimal() + 
+  labs(title = "Error Count by JAR",
+                         subtitle = "(lines connect PIDs)")
+
+## INDIVIDUAL DIFFERENCES BY JAR
+ggplot(df, aes(x = FORMAT, y = n_errors, group = PID)) +
+  geom_line(alpha = 0.35) +
+  geom_point(size = 2, alpha = 0.8) +
+  theme_bw() +
+  labs(
+    x = "Format",
+    y = "Error Count"
+  )+
+  theme_minimal() + 
+  labs(title = "Error Count by FORMAT",
+                         subtitle = "(lines connect PIDs)")
+
+```
 
 
 
-- 'flip everything up at start' less piece selection errors?
-- does model matching correspond with less (spatial transformation) errors?
+```{r model-error-poisson}
+
+## df = error counts dataframe
+df <- error_counts 
+
+## MODEL 1 | Poisson model for count data
+m_pois <- glmer(
+  n_errors ~ FORMAT + JAR + (1|PID),
+  family = poisson,
+  data = df
+)
+summary(m_pois)
+check_overdispersion(m_pois)
+# anova(m_pois)
+# report(m_pois)
+
+## PLOT MODEL ESTIMATES
+# plot_model(m_pois, show.values= TRUE, type = "re") # random effects
+plot_model(m_pois, show.values= TRUE, type = "est", title = "Model Estimate (n_errors ~ FORMAT + JAR + (1|PID)")
 
 
-### SPEED/ACCURACY 
+## MODEL TABLE
+m_pois_tab <- tidy(m_pois, effects = "fixed") %>%
+  mutate(
+    beta = round(estimate, 2),
+    se   = round(std.error, 2),
+    z    = round(statistic, 2),
+    p    = ifelse(p.value < .001, "< .001", paste0("= ", round(p.value, 3))),
+    irr  = round(exp(estimate), 2),
+    pct_change = round((exp(estimate) - 1) * 100, 0)
+  )
+
+format_booklet <- m_pois_tab %>% filter(term == "FORMATBOOKLET")
+jar2           <- m_pois_tab %>% filter(term == "JARjar2")
+intercept      <- m_pois_tab %>% filter(term == "(Intercept)")
+
+## RANDOM EFFECT
+re_var <- as.data.frame(VarCorr(m_pois)) %>%
+  filter(grp == "PID") %>%
+  pull(vcov)
+
+re_sd <- as.data.frame(VarCorr(m_pois)) %>%
+  filter(grp == "PID") %>%
+  pull(sdcor)
+
+## OVERDISPERSION
+od <- performance::check_overdispersion(m_pois)
+
+## DESCRIBE MODEL VARIANCE EXPLAINED
+v_pois <- get_variance(m_pois,   tolerance = 1e-12)
+total_var <- v_pois$var.fixed +
+             v_pois$var.random +
+             v_pois$var.residual
+
+fixed_pct <- 100 * v_pois$var.fixed / total_var
+random_pct <- 100 * v_pois$var.random / total_var
+resid_pct <- 100 * v_pois$var.residual / total_var
+
+```
+
+A Poisson generalized linear mixed-effects model was fit to predict error count from FORMAT and JAR, with a random intercept for participant (PID). A significant effect of JAR was observed, with Jar 2 associated with higher error counts than Jar 1 (β = `r jar2$beta`, SE = `r jar2$se`, *z* = `r jar2$z`, *p* `r jar2$p`). Exponentiating the coefficient indicated that expected error counts were approximately `r jar2$pct_change`% higher in Jar 2 than in Jar 1 (IRR = `r jar2$irr`). The effect of FORMAT was not statistically significant (β = `r format_booklet$beta`, SE = `r format_booklet$se`, *z* = `r format_booklet$z`, *p* `r format_booklet$p`), although error counts were estimated to be approximately `r format_booklet$pct_change`% higher for BOOKLET than APP (IRR = `r format_booklet$irr`). The participant-level random intercept variance was `r round(re_var, 2)` (SD = `r round(re_sd, 2)`). 
+
+Variance decomposition indicated that fixed effects accounted for approximately `r round(fixed_pct, 1)`% of the total variance, participant-level variability accounted for `r round(random_pct, 1)`%, and `r round(resid_pct, 1)`% remained unexplained. 
+
+An overdispersion diagnostic found no evidence that the Poisson assumption was violated (dispersion ratio = `r round(od$dispersion_ratio, 2)`, *p* = `r ifelse(od$p_value < .001, "< .001", paste0("= ", round(od$p_value, 3)))`).
+
+```{r model-error-negativeBIONOM}
+# ## MODEL 2 | Negative binomial model for overdispersed count data
+# m_nb <- glmmTMB(
+#   n_errors ~ FORMAT + JAR + (1|PID),
+#   family = nbinom2, 
+#   data = error_counts
+# )
+# summary (m_nb)
+# report(m_nb)
+# 
+# ## PLOT MODEL ESTIMATES
+# plot_model(m_nb, values = TRUE, type = "est",
+#            title = "Model Prediction for (n_errors n_errors ~ FORMAT + JAR + (1|PID) [family = nbinom2]")
+# 
+# 
+# ## MODEL TABLE
+# m_nb_tab <- tidy(m_nb, effects = "fixed") %>%
+#   mutate(
+#     beta = round(estimate, 2),
+#     se   = round(std.error, 2),
+#     z    = round(statistic, 2),
+#     p    = ifelse(p.value < .001, "< .001", paste0("= ", round(p.value, 3)))
+#   )
+# 
+# #m_nb_tab
+# format_app <- m_nb_tab %>% filter(term == "FORMATAPP")
+# jar2       <- m_nb_tab %>% filter(term == "JARjar2")
+# re_var <- as.data.frame(VarCorr(m_nb)$cond$PID)[1, 1]
+# 
+# ## DESCRIBE MODEL VARIANCE EXPLAINED
+# v_nb <- get_variance(m_nb,   tolerance = 1e-12)
+# total_var <- v_nb$var.fixed +
+#              v_nb$var.random +
+#              v_nb$var.residual
+# 
+# fixed_pct <- 100 * v_nb$var.fixed / total_var
+# random_pct <- 100 * v_nb$var.random / total_var
+# resid_pct <- 100 * v_nb$var.residual / total_var
 
 
-
-
-
-
-
+# A negative binomial generalized linear mixed-effects model was fit to
+# predict error counts from FORMAT and JAR, with a random intercept for
+# participant (PID). Neither predictor was significantly associated with
+# error count. Relative to the reference format, the APP format was
+# associated with a non-significant reduction in expected errors (β =
+# `r format_app$beta`, SE = `r format_app$se`, z = `r format_app$z`, p
+# `r format_app$p`). Similarly, Jar 2 was associated with a
+# non-significant increase in expected errors relative to Jar 1 (β =
+# `r jar2$beta`, SE = `r jar2$se`, z = `r jar2$z`, p `r jar2$p`). The
+# participant-level random-intercept variance was `r signif(re_var, 3)`,
+# indicating little evidence of systematic between-participant differences
+# in baseline error rates.
+# 
+# Variance decomposition indicated that fixed effects accounted for approximately `r round(fixed_pct,2)`% of the total variance, participant-level variability accounted for `r  format(random_pct, scientific=FALSE)`%, and `r round(resid_pct,2)`% remained unexplained.
+```
 
 
 
