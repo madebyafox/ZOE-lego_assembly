@@ -799,7 +799,7 @@ check_overdispersion(m_pois)
 
 ## PLOT MODEL ESTIMATES
 # plot_model(m_pois, show.values= TRUE, type = "re") # random effects
-plot_model(m_pois, show.values= TRUE, type = "est", title = "Model Estimate (n_errors ~ FORMAT + JAR + (1|PID)")
+plot_model(m_pois, show.values= TRUE, type = "est", title = "Model Estimate (n_errors ~ FORMAT + JAR + (1|PID), family = poisson")
 
 
 ## MODEL TABLE
