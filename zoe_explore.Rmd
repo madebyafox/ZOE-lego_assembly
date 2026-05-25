@@ -201,6 +201,32 @@ write.csv(df_errors,"data/output/df_errors.csv", row.names = FALSE)
 
 ```
 
+```{r import-participants}
+
+##import participants
+## manually generated participant level file based on covariate data + participant survey
+df_participants_raw <- read_csv("data/input/participants.csv", 
+                     show_col_types=FALSE) |> 
+  mutate(
+    PID = as_factor(PID),
+    Gender = as_factor(Gender),
+    Experience_LEGO = as_factor(Experience_LEGO),
+    Experience_DIY = as_factor(Experience_DIY),
+    Childhood_LEGO = as_factor(Childhood_LEGO)
+    # END = hms::as_hms(END),
+  ) |> 
+  ## FILTER OUT P11 [APP ONLY CONTROL] // P18 [BOOK ONLY CONTROL]
+  filter(PID %nin% c("P11", "P18")) |> 
+  droplevels()
+  
+## corsi backward span score == length of the longest sequence of colored blocks for which the participant successfully recalled at least one of the trials 
+
+## EXPORT DF_ERRORS
+write.csv(df_errors,"data/output/df_errors.csv", row.names = FALSE)
+
+```
+
+
 
 ### TODO participant-level wrangling
 
@@ -377,12 +403,14 @@ table(df$PID, df$JAR, df$FORMAT)
 df %>% 
   ggplot(aes(x=PID, fill=JAR))+
     geom_bar(position="dodge") + 
+  scale_fill_brewer(palette="Paired", direction =-1) +
   theme_minimal() + 
   labs(title = "Errors per JAR per Participant")
 
 ## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by JAR facet FORMAT]
 df %>% 
   ggplot(aes(x=PID, fill=JAR))+
+  scale_fill_brewer(palette="Paired", direction =-1) +
     geom_bar(position="dodge") + 
   facet_wrap(~FORMAT) + 
   theme_minimal() + 
@@ -404,6 +432,9 @@ df %>%
   theme_minimal() + 
   labs(title = "Errors by FORMAT and TYPE")
 
+
+
+
 ## GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
 df %>% 
   ggplot(aes(x=FORMAT, fill=ERROR))+
@@ -418,6 +449,32 @@ df %>%
   facet_wrap(JAR~FORMAT) + 
   theme_minimal() + 
   labs(title = "Errors per JAR per Participant BY FORMAT")
+
+
+
+
+
+## ZOES DETAIL GRAPH
+g <- df %>% 
+  ggplot(aes(x=ERROR_TYPE, fill=ERROR))+
+    geom_bar(stat="count") + 
+  facet_wrap(~FORMAT) +
+  theme_minimal() + 
+  labs(title = "Errors by FORMAT and TYPE")
+
+g 
+ggsave(
+  filename = "figs/errors_by_format_type.svg",
+  plot = g,
+  device = svglite,
+  width = 10,
+  height = 4,
+  units = "in"
+)
+
+
+
+
 
 
 
@@ -454,7 +511,7 @@ df %>%
 
 
 
-## PARTICIPANT LEVEL 
+## TODO PARTICIPANT LEVEL 
 
 
 
