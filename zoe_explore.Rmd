@@ -237,6 +237,12 @@ df_participants_raw <- read_csv("data/input/participants.csv",
 ```
 
 ### TODO participant-level wrangling
+### TODO import error pairs
+### TODO import step-pair 
+
+## TODO ERROR PAIR 
+### ERROR COUNT per STEP
+### ERROR TYPE per STEP
 
 ## STEPS
 
@@ -299,6 +305,7 @@ ggsave(
 
 ### DURATION STEPS
 
+#### STEP-LEVEL DURATION (BAR)
 -   flipping tapping through fast, should NOT be included in step level
     duration, but SHOULD be included in participant level duration
 
@@ -355,7 +362,7 @@ df_steps_dur %>%
 
 ```
 
-### DURATION STEPS LINE
+#### STEP-LEVEL DURATION (LINE)
 
 ```{r duration-formats}
 
@@ -391,7 +398,33 @@ df %>% ggplot(aes(x=FORMAT, y=time)) +
 
 
 ```
+#### JAR-LEVEL DURATION
 
+```{r duration-steps-participant, warning=FALSE}
+
+## SET DATAFRAME
+
+
+## grouping by participant, jar, format to get duration by step
+df <- df_duration_by_particiapnt <- df_steps |> 
+  group_by(PID,JAR,FORMAT) |> 
+  summarise(
+    DURATION = sum(DURATION)
+ )
+
+
+## GROUPED BARCHART [all participants total DURATION X PARTICIPANT by JAR facet FORMAT]
+df %>%
+    ggplot(aes(fill=JAR))+
+    scale_fill_brewer(palette="Paired", direction =-1) +
+    geom_bar(aes(x=FORMAT, y= DURATION), position="dodge", stat="identity") +
+  # facet_wrap(~FORMAT) +
+  theme_minimal() +
+  labs(title = "Total step DURATION per FORMAT per Participant",
+       subtitle = "(includes step repeats)")
+
+
+```
 ## ERRORS
 
 ### COUNT ERRORS
@@ -436,7 +469,13 @@ df %>%
   theme_minimal() + 
   labs(title = "Errors by FORMAT and TYPE")
 
-
+## FACETED GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
+df %>% 
+  ggplot(aes(x=FORMAT, fill=ERROR_TYPE))+
+    geom_bar(position="dodge") + 
+  facet_wrap(~JAR) + 
+  theme_minimal() + 
+  labs(title = "Errors by FORMAT and TYPE")
 
 
 ## GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
@@ -478,11 +517,6 @@ ggsave(
 
 
 
-
-
-
-
-
 ```
 
 ### COUNT ERROR RECOVERY
@@ -502,13 +536,33 @@ df %>%
   theme_minimal() + 
   labs(title = "Recoveries per JAR per Participant")
 
-## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by JAR facet FORMAT]
+## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by FORMAT]
 df %>% 
   ggplot(aes(x=RECOVERY, fill=FORMAT))+
     geom_bar(position="dodge") + 
   # facet_wrap(FORMAT) + 
   theme_minimal() + 
   labs(title = "Errors RECOVERY by FORMAT")
+
+## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by FORMAT and JAR]
+df %>% 
+  ggplot(aes(x=RECOVERY, fill=FORMAT))+
+    geom_bar(position="dodge") + 
+  facet_wrap(~JAR) + 
+  theme_minimal() + 
+  labs(title = "Errors RECOVERY by FORMAT and JAR")
+
+
+## GROUPED BARCHART []
+df %>% 
+  ggplot(aes(x=FORMAT, fill=RECOVERY))+
+    geom_bar() + 
+  scale_fill_brewer(palette="Paired", direction =1) +
+  facet_wrap(~JAR) + 
+  theme_minimal() + 
+  labs(title = "Errors RECOVERY by FORMAT")
+
+
 ```
 
 ## OPEN QUESTIONS
@@ -533,11 +587,20 @@ df %>%
 
 ### SPEED/ACCURACY
 
+
+
+
+
 ## MODELS
+
+### PARTICIPANT LEVEL DURATION MODEL
 
 ### Step Duration
 
 What predicts duration per step?
+
+- TODO add fixed effect of experience
+- TODO explore fixed effect of step number
 
 ```{r time-vis}
 
@@ -904,6 +967,9 @@ An overdispersion diagnostic found no evidence that the Poisson assumption was v
 ```
 
 
+
+### TODO Predict Error TYPE by FORMAT
+### TODO Predict Error TYPE by STEP X FORMAT 
 
 ## STASH
 
