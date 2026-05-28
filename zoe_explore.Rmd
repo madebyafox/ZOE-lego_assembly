@@ -362,12 +362,9 @@ df_steps_dur %>%
 
 ```
 
-#### STEP-LEVEL DURATION (LINE)
+#### JAR-LEVEL DURATION (LINE)
 
 ```{r duration-formats}
-
-
-
 
 df <- df_steps%>% 
   group_by(PID, FORMAT,JAR) %>% 
@@ -387,18 +384,28 @@ df %>% ggplot(aes(x=FORMAT, y=time)) +
        subtitle="line indicates participant")
   
 
-
-df %>% ggplot(aes(x=FORMAT, y=time)) +
+## PId level connected line plot 
+g <- df %>% ggplot(aes(x=FORMAT, y=time)) +
   geom_jitter(alpha=0.4, width=0.00, aes(color=PID)) + 
   geom_line(aes(group=PID))+
   theme_minimal() + 
   labs(title = "JAR duration by FORMAT",
        subtitle="line indicates participant")
   
+g 
+ggsave(
+  filename = "figs/jar_duration_by_participant_line.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
 
 
 ```
-#### JAR-LEVEL DURATION
+#### JAR-LEVEL DURATION (BAR)
 
 ```{r duration-steps-participant, warning=FALSE}
 
@@ -425,6 +432,31 @@ df %>%
 
 
 ```
+#### JAR-LEVEL DURATION (GGSTATSPLOT)
+
+```{r duration-participant, warning=FALSE}
+
+## SET DATAFRAME
+
+
+## grouping by participant, jar, format to get duration by step
+df <- df_duration_by_particiapnt <- df_steps |> 
+  group_by(PID,JAR, FORMAT) |> 
+  summarise(
+    DURATION = as.double(sum(DURATION))
+ )
+
+
+library(ggstatsplot)
+grouped_ggwithinstats(df, x=FORMAT, y=DURATION, 
+                      grouping.var = JAR, 
+                      subject.id = PID,
+                      type = "parametric",
+    pairwise.comparisons = TRUE)
+
+```
+
+
 ## ERRORS
 
 ### COUNT ERRORS
@@ -563,9 +595,44 @@ df %>%
   labs(title = "Errors RECOVERY by FORMAT")
 
 
+## GROUPED BARCHART []
+g <- df %>% 
+  ggplot(aes(x=FORMAT, fill=RECOVERY))+
+    geom_bar() + 
+  scale_fill_brewer(palette="Paired", direction =1) +
+  facet_wrap(~JAR) + 
+  theme_minimal() + 
+  labs(title = "Errors RECOVERY by FORMAT")
+
+g 
+ggsave(
+  filename = "figs/errors_recovery.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
 ```
+#### todo 
+- ratio of recovered to unrecovered 
+
+
 
 ## OPEN QUESTIONS
+
+### ZOES FOUR THINGS
+#### complexity score
+#### by participant experience
+#### by corsi 
+#### participant strategy 
+mean step 0 time 
+step 0 team 
+#### time——accuracy -- import error pairs 
+#### step pairs 
+
+
 
 ### STEPS/ERRORS
 
@@ -644,6 +711,50 @@ ggplot(df, aes(x = FORMAT, y = dur, colour = FORMAT)) +
   theme_minimal() + 
   labs(title = "Step Duration by Format & Jar",
        y = "Duration (s)")
+
+
+
+# ######## DROP OUTLINES 
+# ### DROP P10, P13
+# df <- df |> filter(PID %nin% c("P10", "P13")) |> droplevels()
+# 
+# 
+# ## PLOT RAW DATA   
+# ## STRIP PLOT + MEAN LABEL
+# ggplot(df, aes(x = FORMAT, y = dur, colour = FORMAT)) +
+#   geom_boxplot(
+#     aes(group = FORMAT),
+#     width = 0.5,
+#     outlier.shape = NA
+#   ) +
+#   geom_jitter(
+#     width = 0.1,
+#     alpha = 0.6,
+#     size = 0.5
+#   ) +
+#   # DISPLAY MEAN AS POINT
+#   stat_summary(
+#     fun = mean,
+#     geom = "point",
+#     shape = 18,
+#     size = 3,
+#     colour = "black"
+#   ) +
+#   # MEAN LABEL
+#   stat_summary(
+#     fun = mean,
+#     geom = "text",
+#     aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
+#     vjust = -0.8,
+#     colour = "black",
+#     size = 3
+#   ) +
+#   facet_wrap(~ JAR) +
+#   theme_minimal() + 
+#   labs(title = "Step Duration by Format & Jar",
+#        y = "Duration (s)")
+
+
 
 ```
 
@@ -840,6 +951,73 @@ ggplot(df, aes(x = FORMAT, y = n_errors, group = PID)) +
   labs(title = "Error Count by FORMAT",
                          subtitle = "(lines connect PIDs)")
 
+
+
+######## DROP OUTLINES 
+### DROP P10, P13
+df <- df |> filter(PID %nin% c("P10", "P13")) |> droplevels()
+
+
+### removed 
+ggplot(df,
+       aes(x = FORMAT,
+           y = n_errors,
+           colour = JAR)) +
+  geom_boxplot(
+    aes(group = FORMAT),
+    outlier.shape = NA
+  ) +
+  geom_jitter(width = 0.08, alpha = 0.6) +
+    # DISPLAY MEAN AS POINT
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 18,
+    size = 3,
+    colour = "black"
+  ) +
+  # MEAN LABEL
+  stat_summary(
+    fun = mean,
+    geom = "text",
+    aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
+    vjust = -0.8,
+    colour = "black",
+    size = 3
+  ) +
+  facet_wrap(~ JAR) +
+  theme_minimal() + 
+  labs(title = "Error Count by Format & Jar", 
+       y = "Number of Errors")
+
+
+## INDIVIDUAL DIFFERENCES BY JAR
+ggplot(df, aes(x = JAR, y = n_errors, group = PID)) +
+  geom_line(alpha = 0.35) +
+  geom_point(size = 2, alpha = 0.8) +
+  theme_bw() +
+  labs(
+    x = "Jar",
+    y = "Error Count"
+  )+ 
+  theme_minimal() + 
+  labs(title = "Error Count by JAR",
+                         subtitle = "(lines connect PIDs)")
+
+## INDIVIDUAL DIFFERENCES BY JAR
+ggplot(df, aes(x = FORMAT, y = n_errors, group = PID)) +
+  geom_line(alpha = 0.35) +
+  geom_point(size = 2, alpha = 0.8) +
+  theme_bw() +
+  labs(
+    x = "Format",
+    y = "Error Count"
+  )+
+  theme_minimal() + 
+  labs(title = "Error Count by FORMAT",
+                         subtitle = "(lines connect PIDs)")
+
+
 ```
 
 
@@ -848,6 +1026,10 @@ ggplot(df, aes(x = FORMAT, y = n_errors, group = PID)) +
 
 ## df = error counts dataframe
 df <- error_counts 
+
+######## DROP OUTLINES 
+### DROP P10, P13
+df <- df |> filter(PID %nin% c("P10", "P13")) |> droplevels()
 
 ## MODEL 1 | Poisson model for count data
 m_pois <- glmer(
@@ -859,6 +1041,12 @@ summary(m_pois)
 check_overdispersion(m_pois)
 # anova(m_pois)
 # report(m_pois)
+
+
+
+
+
+
 
 ## PLOT MODEL ESTIMATES
 # plot_model(m_pois, show.values= TRUE, type = "re") # random effects
@@ -969,7 +1157,109 @@ An overdispersion diagnostic found no evidence that the Poisson assumption was v
 
 
 ### TODO Predict Error TYPE by FORMAT
+
+```{r }
+
+df <- df_errors
+
+## PREDICT TYPE by FORMAT 
+
+library(glmmTMB)
+
+m1 <- glmmTMB(
+  ERROR_TYPE ~ FORMAT + JAR + (1 | PID),
+  data = df,
+  family = multinomial()
+)
+
+
+library(brms)
+
+model <- brm(
+  ERROR_TYPE ~ FORMAT + JAR + (1 | PID),
+  data = df,
+  family = categorical()
+)
+
+
+
+install.packages("mclogit")
+library(mclogit)
+
+model <- mblogit(
+  ERROR_TYPE ~ FORMAT + JAR,
+  random = ~ 1 | PID,
+  data = df
+)
+
+
+```
 ### TODO Predict Error TYPE by STEP X FORMAT 
+
+
+
+
+
+## PREDICT RECOVERY 
+
+### vis
+
+```{r}
+
+df <- df_error_recoveries
+
+
+
+
+## GROUPED BARCHART []
+df %>% 
+  ggplot(aes(x=FORMAT, fill=RECOVERY))+
+    geom_bar() + 
+  scale_fill_brewer(palette="Paired", direction =1) +
+  facet_wrap(~JAR) + 
+  theme_minimal() + 
+  labs(title = "Errors RECOVERY by FORMAT")
+
+
+## GROUPED BARCHART []
+df %>% 
+  ggplot(aes(x=FORMAT, fill=RECOVERY))+
+    geom_bar() + 
+  scale_fill_brewer(palette="Paired", direction =1) +
+  facet_wrap(~JAR) + 
+  theme_minimal() + 
+  labs(title = "Errors RECOVERY by FORMAT")
+
+
+```
+
+
+### model 
+```{r errors-recovery}
+
+## one row per error
+df <- df_error_recoveries |> 
+  droplevels() |> 
+   mutate(RECOVERY = fct_rev(RECOVERY))
+
+m1 <- glmer(
+  RECOVERY ~ FORMAT + JAR + (1 | PID),
+  data = df,
+  family = binomial(link = "logit")
+)
+
+m2 <- glmer(
+  RECOVERY ~ FORMAT * JAR + (1 | PID),
+  data = df,
+  family = binomial(link = "logit")
+)
+
+
+
+
+
+```
+
 
 ## STASH
 
