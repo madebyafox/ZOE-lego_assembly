@@ -23,6 +23,49 @@ editor_options:
   markdown: 
     wrap: 72
 ---
+## OPEN QUESTIONS
+
+### ZOES FOUR THINGS
+#### complexity score
+#### by participant experience
+#### by corsi 
+#### participant strategy 
+mean step 0 time 
+step 0 team 
+#### time——accuracy -- import error pairs 
+#### step pairs 
+
+
+
+### STEPS/ERRORS
+
+-   Do ppl who have fewer step repeats have more errors? (visualization
+    of ERRORS X STEP frequency by person)
+
+### STRATEGY
+
+#### organization
+
+#### strategy X errors
+
+-   Will pre-sorting by jar result in less piece selection errors?
+
+-   'flip everything up at start' less piece selection errors?
+
+-   does model matching correspond with less (spatial transformation)
+    errors?
+
+### SPEED/ACCURACY
+
+
+
+
+
+
+
+
+
+
 
 ## SETUP
 
@@ -104,33 +147,35 @@ df_step_repeats <- df_steps_raw |>
 
 ## DF_STEP_FLIPPING
 ## The 'Flipping/Tapping Through Fast code indicates when participant is engaging with instructions in order to navigate to a different point rather than meaningfully with THAT step
-## TODO flipping/tapping SHOULD be included in Participant level total step duration 
-## TODO flipping/tapping SHOULD NOT be included in Participant level step count 
+## NOTE flipping/tapping SHOULD be included in Participant level total step duration 
+## NOTE flipping/tapping SHOULD NOT be included in Participant level step count 
 df_step_flipping <- df_steps_raw |> 
   filter( STEP == "Flipping/Tapping Through Fast")
 
 
-##DF_STEPS
+##DF_STEPS_COUNT
 ##data frame for time coded on a step; includes 'repeats' but not explicitly coded as repeat
 ## instances of each step code excluding (dual-coded) step repeat + flip
+## NOTE flipping/tapping SHOULD NOT be included in Participant level step count 
 ## primary DF for step level analysis
-df_steps <- df_steps_raw %>% 
+df_steps_count <- df_steps_raw %>% 
   filter(STEP %nin% c("Step Repeat", "Flipping/Tapping Through Fast")) |> 
   droplevels()
 
 
 ## FOR STEP DURATION GRAPHS
-df_steps_dur <- df_steps_raw %>% 
+## NOTE flipping/tapping SHOULD be included in Participant level total step duration 
+df_steps_duration <- df_steps_raw %>% 
   filter(STEP %nin% c("Step Repeat")) |> 
   droplevels()
 
-## TODO round up ms instead of truncate on timestamps 
-
-
 ## EXPORT DF_STEPS
-write.csv(df_steps,"data/output/df_steps.csv", row.names = FALSE)
+write.csv(df_steps_count,"data/output/df_steps_count.csv", row.names = FALSE)
+write.csv(df_steps_duration,"data/output/df_steps_duration.csv", row.names = FALSE)
 
 
+## CLEANUP
+rm(df_steps_raw)
 ```
 
 ```{r import-errors}
@@ -230,8 +275,11 @@ df_participants_raw <- read_csv("data/input/participants.csv",
   
 ## corsi backward span score == length of the longest sequence of colored blocks for which the participant successfully recalled at least one of the trials 
 
+## PRIMARY PARTICIPANTS DATAFRAME
+df_participants <- df_participants_raw
+rm(df_participants_raw)
 
-## EXPORT DF_ERRORS
+## EXPORT df_participants
 # write.csv(df_errors,"data/output/df_errors.csv", row.names = FALSE)
 
 ```
@@ -239,6 +287,22 @@ df_participants_raw <- read_csv("data/input/participants.csv",
 ### TODO participant-level wrangling
 ### TODO import error pairs
 ### TODO import step-pair 
+
+
+
+## STEP COUNT
+
+## STEP DURATION
+
+## ERROR COUNT
+
+## ERROR TYPE
+
+## ERROR RECOVERY
+
+
+
+
 
 ## TODO ERROR PAIR 
 ### ERROR COUNT per STEP
@@ -617,44 +681,6 @@ ggsave(
 ```
 #### todo 
 - ratio of recovered to unrecovered 
-
-
-
-## OPEN QUESTIONS
-
-### ZOES FOUR THINGS
-#### complexity score
-#### by participant experience
-#### by corsi 
-#### participant strategy 
-mean step 0 time 
-step 0 team 
-#### time——accuracy -- import error pairs 
-#### step pairs 
-
-
-
-### STEPS/ERRORS
-
--   Do ppl who have fewer step repeats have more errors? (visualization
-    of ERRORS X STEP frequency by person)
-
-### STRATEGY
-
-#### organization
-
-#### strategy X errors
-
--   Will pre-sorting by jar result in less piece selection errors?
-
--   'flip everything up at start' less piece selection errors?
-
--   does model matching correspond with less (spatial transformation)
-    errors?
-
-### SPEED/ACCURACY
-
-
 
 
 
@@ -1259,6 +1285,10 @@ m2 <- glmer(
 
 
 ```
+
+
+
+
 
 
 ## STASH
