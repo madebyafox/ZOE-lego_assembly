@@ -40,22 +40,11 @@ step 0 team
 - Do ppl who have fewer step repeats have more errors? (visualization
     of ERRORS X STEP frequency by person)
 ### STEP-PAIRS 
+- strategy X errors
+
+### SPEED/ACCURACY
 
 
-
-
-
-
-
-
-
-
-
-#### strategy X errors
-
-
-
-#### SPEED/ACCURACY
 
 
 
@@ -78,6 +67,7 @@ library(ggformula) #regression syntax viz
 library(Hmisc) # %nin% operator
 library(svglite) #saving ggplots as svgs
 library(kableExtra) #table formatting
+library(tidyr) #tidy data wrangling
 
 ## modelling
 library(afex) #anova
@@ -93,6 +83,7 @@ library(broom.mixed) #tidy model tables mixed effects
 library(ggstatsplot) ## plotting w/ statistical tests
 ```
 
+### import steps
 ```{r import-steps}
 
 ## DF_STEPS_RAW
@@ -190,7 +181,7 @@ write.csv(df_steps_duration,"data/output/df_steps_duration.csv", row.names = FAL
 ## CLEANUP
 rm(df_steps_raw)
 ```
-
+### import errors
 ```{r import-errors}
 
 ##import errors
@@ -282,7 +273,7 @@ write.csv(df_error_recoveries,"data/output/df_error_recoveries.csv", row.names =
 ##CLEANUP
 rm(df_errors_raw)
 ```
-
+### import participants
 ```{r import-participants}
 
 ##import participants
@@ -306,16 +297,144 @@ df_participants_raw <- read_csv("data/input/participants.csv",
 ## PRIMARY PARTICIPANTS DATAFRAME
 df_participants <- df_participants_raw
 
-## EXPORT df_participants
-write.csv(df_participants,"data/output/df_participants.csv", row.names = FALSE)
+
 
 ## CLEANUP
 rm(df_participants_raw)
 ```
 
+### wrangle tasks
+```{r wrangle-tasks}
+
+## CREATE lookup table
+task_lookup <- df_steps_count %>%
+  distinct(PID, JAR, FORMAT, ORDER)
+
+
+## CREATE TASKS DATAFRAME 
+## one row per participant—jar
+df_tasks <- df_participants %>%
+  tidyr::crossing(
+    JAR = c("jar1", "jar2")
+  ) %>% 
+  left_join(
+    task_lookup,
+    by = c("PID", "JAR")
+  ) %>% 
+  mutate(
+    JAR = as.factor(JAR)
+  )%>% select(-Timestamp)
+
+
+
+######### SUMMARIZE ERRORS BY TASK 
+## summarize total errors by participant-jar
+task_errors <- df_errors %>% 
+  group_by(PID, JAR) %>% 
+  dplyr::summarize(
+    errors_jar = n()
+  )
+
+## ADD TOTAL ERRORS TO DF_PARTICIPANTS
+df_tasks <- df_tasks %>%
+  left_join(
+    task_errors,
+    by = c("PID", "JAR")
+  ) %>%
+  mutate(
+    errors_jar = tidyr::replace_na(errors_jar, 0)
+  )
+
+
+
+
+######### SUMMARIZE DURATION BY TASK 
+## summarize total duration by participant-jar
+task_duration <- df_steps_duration %>% 
+  group_by(PID, JAR) %>% 
+  dplyr::summarize(
+    duration_jar = sum(as.double(DURATION))/60
+  )
+
+## ADD TOTAL ERRORS TO DF_PARTICIPANTS
+df_tasks <- df_tasks %>%
+  left_join(
+    task_duration,
+    by = c("PID", "JAR")
+  ) %>%
+  mutate(
+    duration_jar = tidyr::replace_na(duration_jar, 0)
+  )
+
+
+#### TINY TASK
+df_tiny_task <- df_tasks %>% 
+  select(PID, JAR, FORMAT, ORDER, errors_jar, duration_jar)
+
+## CLEANUP
+rm(task_errors, task_duration)
+
+
+## EXPORT df_tasks
+write.csv(df_tasks,"data/output/df_tasks.csv", row.names = FALSE)
+```
+
+
+
+
+### wrangle participants
+
+```{r wrangling-participants}
+
+
+############## SUMMARIZE ERRORS 
+## summarize total errors by participant
+participant_errors <- df_errors %>% 
+  group_by(PID) %>% 
+  dplyr::summarize(
+    errors_total = n()
+  )
+
+## ADD TOTAL ERRORS TO DF_PARTICIPANTS
+df_participants <- df_participants %>%
+  left_join(
+    participant_errors %>% select(PID, errors_total),
+    by = "PID"
+  ) %>%
+  mutate(
+    errors_total = replace_na(errors_total, 0)
+  )
+
+
+############## SUMMARIZE DURATION
+
+## sumarize total duration by participant
+participant_duration <- df_steps_duration %>% 
+  group_by(PID) %>% 
+  dplyr::summarize(
+    duration_minutes = sum(as.double(DURATION))/60
+  )
+
+## ADD TOTAL DURATION TO DF_PARTICIPANTS
+df_participants <- df_participants %>%
+  left_join(
+    participant_duration %>% select(PID, duration_minutes),
+    by = "PID"
+  ) %>%
+  mutate(
+    duration_minutes = replace_na(duration_minutes, 0)
+  )
+
+## EXPORT df_participants
+write.csv(df_participants,"data/output/df_participants.csv", row.names = FALSE)
+
+```
+
+
 ### TODO participant-level wrangling
 ### TODO import error pairs
 ### TODO import step-pair 
+
 
 
 
@@ -1630,6 +1749,41 @@ plot_model(m2, type = "int", title = "error recovery ~ JAR * FORMAT")
 
 
 
+
+## SPEED-ACCURACY
+
+### DESCRIBE Jar-level 
+
+What is the relationship between a participant's speed and accuracy on the tasks?
+```{r}
+## SET DATAFRAME
+df <- df_tiny_task
+
+## SCATTERPLOT
+df %>% ggplot(aes(x= duration_jar, y = errors_jar, color=FORMAT)) +
+  geom_point(alpha=0.5) + 
+  scale_color_brewer(palette="Set2", direction =-1) +
+  facet_wrap(~JAR) + 
+  theme_minimal() + 
+  labs(
+    title = "Participant SPEED X ACCURACY", x = "Jar duration (minute)", y="Errors"
+  ) 
+
+```
+
+
+### MODEL Jar-level
+```{r}
+
+df <- df_tasks
+
+m1 <- lmer(duration_jar ~ errors_jar + FORMAT + JAR + (1|PID), data = df)
+summary(m1)
+report(m1)
+
+plot_model(m1, type="est", show.values = TRUE, show.p = TRUE, title = "duration_jar ~ errors + FORMAT + JAR + (1|PID)")
+# plot_model(m1, type = "pred")
+```
 ## WIP
 
 
