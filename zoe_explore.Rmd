@@ -25,37 +25,37 @@ editor_options:
 ---
 ## OPEN QUESTIONS
 
-### ZOES FOUR THINGS
-#### complexity score
-#### by participant experience
-#### by corsi 
-#### participant strategy 
+### BY STEP 
+- complexity score
+
+### BY PARTICIPANT
+- by participant experience
+- by corsi 
+- participant strategy 
 mean step 0 time 
 step 0 team 
-#### time——accuracy -- import error pairs 
-#### step pairs 
 
-
-
-### STEPS/ERRORS
-
--   Do ppl who have fewer step repeats have more errors? (visualization
+### ERROR-PAIRS
+- time——accuracy -- import error pairs 
+- Do ppl who have fewer step repeats have more errors? (visualization
     of ERRORS X STEP frequency by person)
+### STEP-PAIRS 
 
-### STRATEGY
 
-#### organization
+
+
+
+
+
+
+
+
 
 #### strategy X errors
 
--   Will pre-sorting by jar result in less piece selection errors?
 
--   'flip everything up at start' less piece selection errors?
 
--   does model matching correspond with less (spatial transformation)
-    errors?
-
-### SPEED/ACCURACY
+#### SPEED/ACCURACY
 
 
 
@@ -77,8 +77,10 @@ library(lubridate) #timey-wimey
 library(ggformula) #regression syntax viz
 library(Hmisc) # %nin% operator
 library(svglite) #saving ggplots as svgs
+library(kableExtra) #table formatting
 
 ## modelling
+library(afex) #anova
 library(lme4) #regression models
 library(lmerTest) #regression models
 library(sjPlot) #model plots
@@ -88,6 +90,7 @@ library(report) # ez reporting
 library(insight) #ez model info 
 library(glmmTMB) #negative binomial glm model 
 library(broom.mixed) #tidy model tables mixed effects
+library(ggstatsplot) ## plotting w/ statistical tests
 ```
 
 ```{r import-steps}
@@ -122,6 +125,16 @@ df_steps_raw <- read_csv("data/input/wip_steps.csv", col_select =
     END = hms::as_hms(END),
     DURATION = END-START
   ) |> 
+## CREATE ORDER FACTOR 
+  mutate(
+    ORDER = case_when(
+      (JAR == "jar1" & FORMAT == "B") |
+      (JAR == "jar2" & FORMAT == "A") ~ "BOOK_FIRST",
+
+      (JAR == "jar1" & FORMAT == "A") |
+      (JAR == "jar2" & FORMAT == "B") ~ "APP_FIRST"),
+  ORDER = factor(ORDER),
+  ORDER = forcats::fct_rev(ORDER)) %>% 
 ## FILTER OUT P11 [APP ONLY CONTROL] // P18 [BOOK ONLY CONTROL]
   filter(PID %nin% c("P11", "P18"))%>% 
 ## REORDER STEP FACTOR LEVELS
@@ -211,7 +224,18 @@ df_errors_raw <- read_csv("data/input/wip_errors.csv", col_select =
     ERROR_GROUP = as_factor(str_trim(ERROR_GROUP)),
     ERROR_TYPE = as_factor(str_trim(ERROR_TYPE)),
     ERROR = as_factor(str_trim(ERROR))
-  ) %>% select(-JUNK, -BLANK)
+  ) %>% 
+  ## CREATE ORDER FACTOR 
+  mutate(
+    ORDER = case_when(
+      (JAR == "jar1" & FORMAT == "B") |
+      (JAR == "jar2" & FORMAT == "A") ~ "BOOK_FIRST",
+
+      (JAR == "jar1" & FORMAT == "A") |
+      (JAR == "jar2" & FORMAT == "B") ~ "APP_FIRST"),
+  ORDER = factor(ORDER),
+  ORDER = forcats::fct_rev(ORDER)) %>% 
+  select(-JUNK, -BLANK)
   
     
 ## RENAME INSTRUCTION TYPES
@@ -281,11 +305,12 @@ df_participants_raw <- read_csv("data/input/participants.csv",
 
 ## PRIMARY PARTICIPANTS DATAFRAME
 df_participants <- df_participants_raw
-rm(df_participants_raw)
 
 ## EXPORT df_participants
-# write.csv(df_errors,"data/output/df_errors.csv", row.names = FALSE)
+write.csv(df_participants,"data/output/df_participants.csv", row.names = FALSE)
 
+## CLEANUP
+rm(df_participants_raw)
 ```
 
 ### TODO participant-level wrangling
@@ -296,58 +321,44 @@ rm(df_participants_raw)
 
 ## STEP COUNT
 
-## STEP DURATION
-
-## ERROR COUNT
-
-## ERROR TYPE
-
-## ERROR RECOVERY
-
-
-
-
-
-## TODO ERROR PAIR 
-### ERROR COUNT per STEP
-### ERROR TYPE per STEP
-
-## STEPS
-
-### COUNT STEPS
-
-```{r count-steps}
+### DESCRIBE participant-level
+```{r steps_count_participant}
 
 ## SET DATAFRAME
-df <- df_steps
+df <- df_steps_count
 
-print('Number of steps per jar per participant')
-table(df$PID, df$JAR)
+## PRINT TABLE OF STEP COUNTS PER PARTICIPANT-JAR
+title = "Number of steps per JAR per PARTICIPANT"
+subtitle = "(includes repeated steps)"
+(t <- table(df$PID, df$JAR) %>% 
+  addmargins() %>% 
+  kbl(caption = title) %>% 
+  kable_classic())
 
 
 ## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR]
-## 
 df %>% 
   ggplot(aes(x=PID, fill=JAR))+
     geom_bar(position="dodge") + 
+  facet_wrap(~ORDER, scales = "free_x") + 
   scale_fill_brewer(palette="Paired", direction =-1) +
   theme_minimal() + 
   labs(title = "Steps per JAR per Participant",
-       subtitle = "(includes step repeats)")
+       subtitle = "(includes repeated steps)")
 
 ## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by FORMAT]
-## 
 df %>% 
   ggplot(aes(x=PID, fill=FORMAT))+
     geom_bar(position="dodge") + 
+   facet_wrap(~ORDER, scales = "free_x") + 
       scale_fill_brewer(palette="Set2", direction =-1) +
   theme_minimal() + 
   labs(title = "Steps per FORMAT per Participant",
-       subtitle = "(includes step repeats)")
+       subtitle = "(includes repeated steps)")
 
 
 
-# ## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR facet FORMAT]
+## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR facet FORMAT]
 g <- df %>%
   ggplot(aes(x=PID, fill=JAR))+
     geom_bar(position="dodge") +
@@ -371,16 +382,321 @@ ggsave(
 
 ```
 
-### DURATION STEPS
+### DESCRIBE jar-level
+```{r steps_count_jar}
 
-#### STEP-LEVEL DURATION (BAR)
--   flipping tapping through fast, should NOT be included in step level
-    duration, but SHOULD be included in participant level duration
+## SET DATAFRAME
+df <- df_steps_count
+
+## PRINT TABLE OF STEP COUNTS PER PARTICIPANT-JAR
+title = "Number of steps per JAR per FORMAT"
+subtitle = "(includes repeated steps)"
+(t <- table(df$FORMAT, df$JAR) %>% 
+  addmargins() %>% 
+  kbl(caption = title) %>% 
+  kable_classic())
+
+
+## GROUPED BARCHART
+## 
+df %>% 
+  ggplot(aes(x=FORMAT, fill=JAR))+
+    geom_bar(position="dodge") + 
+   facet_wrap(~ORDER, scales = "free_x") + 
+  scale_fill_brewer(palette="Paired", direction =-1) +
+  theme_minimal() + 
+  labs(title = "Steps per FORMAT by JAR",
+       subtitle = "(includes repeated steps)")
+
+## GROUPED BARCHART 
+## 
+df %>% 
+  ggplot(aes(x=JAR, fill=FORMAT))+
+    geom_bar(position="dodge") + 
+   facet_wrap(~ORDER, scales = "free_x") + 
+      scale_fill_brewer(palette="Set2", direction =-1) +
+  theme_minimal() + 
+  labs(title = "Steps per FORMAT by JAR",
+       subtitle = "(includes repeated steps)")
+
+```
+
+### TEST (jar-level) JAR
+
+Is there a significant difference in number of steps PER JAR? 
+```{r TEST-step-count-jar}
+
+## SET DATAFRAME
+df <- df_steps_count %>% 
+  group_by(PID, JAR, FORMAT, ORDER) %>%
+  dplyr::summarize( count = n())
+
+## GGSTATSPLOT _ GROUPED WITHIN STATS
+grouped_ggwithinstats(data = df, 
+              x = JAR, y = count,
+              grouping.var = ORDER,
+              by = PID,
+              type= "nonparametric",
+              results.subtitle = TRUE,
+              bf.message = FALSE, 
+              ggtheme = ggplot2::theme_minimal())
+
+## GGPLOT LINE GRAPH WITHIN SUBJECTS
+df %>%
+  ggplot(aes(JAR, count, group = PID, color=JAR)) +
+  geom_line(alpha = .3) +
+  scale_color_brewer(palette="Paired", direction =-1) +
+  geom_point() +
+  facet_wrap(~ORDER) +
+  theme_minimal() + 
+  labs(title = "Participant Step Count by JAR and ORDER")
+
+## ANOVA
+a <- aov_ez(
+  id = "PID",
+  dv = "count",
+  within = c("JAR"),
+  between = c("ORDER"),
+  data = df
+)
+summary(a)
+
+
+```
+
+
+
+### TEST (jar-level) FORMAT
+
+Is there a significant difference in number of steps PER FORMAT? 
+```{r TEST-step-count-FORMAT}
+
+## SET DATAFRAME
+df <- df_steps_count %>% 
+  group_by(PID, JAR, FORMAT, ORDER) %>%
+  dplyr::summarize( count = n())
+
+## GGSTATSPLOT _ GROUPED WITHIN STATS
+grouped_ggwithinstats(data = df, 
+              x = FORMAT, y = count,
+              grouping.var = ORDER,
+              by = PID,
+              type= "nonparametric",
+              results.subtitle = TRUE,
+              bf.message = FALSE, 
+              ggtheme = ggplot2::theme_minimal())
+
+## GGPLOT LINE GRAPH WITHIN SUBJECTS
+df %>%
+  ggplot(aes(FORMAT, count, group = PID, color=FORMAT)) +
+  geom_line(alpha = .3, color="black") +
+  scale_color_brewer(palette="Set2", direction =-1) +
+  geom_point() +
+  facet_wrap(~ORDER) +
+  theme_minimal() + 
+  labs(title = "Participant Step Count by FORMAT and ORDER")
+
+## ANOVA
+a <- aov_ez(
+  id = "PID",
+  dv = "count",
+  within = c("FORMAT"),
+  between = c("ORDER"),
+  data = df
+)
+summary(a)
+
+
+```
+
+
+
+
+
+### MODEL (participant level) STEP COUNT
+
+What predicts number of steps per participant on each task?
+
+```{r VIS-step-count}
+
+## SET DATAFRAME
+df <- df_steps_count %>% 
+  group_by(PID, JAR, FORMAT, ORDER) %>%
+  dplyr::summarize( count = n())
+
+
+## PLOT RAW DATA   
+## STRIP PLOT + MEAN LABEL
+ggplot(df, aes(x = FORMAT, y = count, colour = FORMAT)) +
+  geom_boxplot(
+    aes(group = FORMAT),
+    width = 0.5,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    width = 0.1,
+    alpha = 0.6,
+    size = 0.5
+  ) +
+  # DISPLAY MEAN AS POINT
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 18,
+    size = 3,
+    colour = "black"
+  ) +
+  # MEAN LABEL
+  stat_summary(
+    fun = mean,
+    geom = "text",
+    aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
+    vjust = -0.8,
+    colour = "black",
+    size = 3
+  ) +
+  facet_wrap(~ JAR) +
+  theme_minimal() + 
+  labs(title = "Step Count by Format & Jar",
+       y = "Number of Steps")
+
+
+
+# ######## DROP OUTLINES 
+# ### DROP P10, P13
+# df <- df |> filter(PID %nin% c("P10", "P13")) |> droplevels()
+# 
+# 
+# ## PLOT RAW DATA   
+# ## STRIP PLOT + MEAN LABEL
+# ggplot(df, aes(x = FORMAT, y = dur, colour = FORMAT)) +
+#   geom_boxplot(
+#     aes(group = FORMAT),
+#     width = 0.5,
+#     outlier.shape = NA
+#   ) +
+#   geom_jitter(
+#     width = 0.1,
+#     alpha = 0.6,
+#     size = 0.5
+#   ) +
+#   # DISPLAY MEAN AS POINT
+#   stat_summary(
+#     fun = mean,
+#     geom = "point",
+#     shape = 18,
+#     size = 3,
+#     colour = "black"
+#   ) +
+#   # MEAN LABEL
+#   stat_summary(
+#     fun = mean,
+#     geom = "text",
+#     aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
+#     vjust = -0.8,
+#     colour = "black",
+#     size = 3
+#   ) +
+#   facet_wrap(~ JAR) +
+#   theme_minimal() + 
+#   labs(title = "Step Duration by Format & Jar",
+#        y = "Duration (s)")
+
+
+
+```
+
+```{r MODEL-step-count}
+
+## SET DATAFRAME
+df <- df_steps_count %>% 
+  group_by(PID, JAR, FORMAT, ORDER) %>%
+  dplyr::summarize( count = n())
+
+
+
+## MODEL 1 | Simple Main Effects
+m1 <- lmer(count ~ JAR * FORMAT + (1|PID), data = df)
+summary(m1)
+anova(m1)
+report(m1)
+
+
+## PLOT MODEL ESTIMATES
+ plot_model(m1, show.values= TRUE, type = "int", title = "Model Estimate (step count ~ FORMAT + JAR + (1|PID)")
+
+## DESCRIBE MODEL VARIANCE EXPLAINED
+v <- get_variance(m1)
+t <- v$var.fixed + v$var.random + v$var.residual
+fixed <- v$var.fixed/t * 100
+random <- v$var.random/t * 100
+residual <- v$var.residual/t * 100
+
+## MODEL TABLE
+m1_tab <- tidy(m1, effects = "fixed") %>%
+  mutate(
+    estimate  = round(estimate, 2),
+    std.error = round(std.error, 2),
+    statistic = round(statistic, 2),
+    p.value   = ifelse(
+      p.value < .001,
+      "< .001",
+      sprintf("= %.3f", p.value)
+    )
+  )
+format_row <- filter(m1_tab, term == "FORMATAPP")
+jar_row    <- filter(m1_tab, term == "JARjar2")
+int_row    <- filter(m1_tab, term == "(Intercept)")
+
+```
+
+(reference level of FORMAT is BOOKLET; reference level of JAR is JAR1)
+
+A linear mixed-effects model was fit to predict step COUNT from
+FORMAT and JAR, with a random intercept for participant (PID).
+
+The effect of FORMAT was not statistically significant, β =
+`r format_row$estimate`, SE = `r format_row$std.error`, *t* =
+`r format_row$statistic`, *p* `r format_row$p.value`.
+
+In contrast, JAR significantly predicted step duration, β =
+`r jar_row$estimate`, SE = `r jar_row$std.error`, *t* =
+`r jar_row$statistic`, *p* `r jar_row$p.value`, indicating that steps
+performed in Jar 2 took approximately `r jar_row$estimate` seconds
+longer than those performed in Jar 1.
+
+The estimated mean count in the reference condition was
+`r int_row$estimate` seconds (SE = `r int_row$std.error`).
+
+The participant-level variance was `r round(v$var.random, 2)` and the
+residual variance was `r round(v$var.residual, 2)`.
+
+*Fixed effects accounted for approximately
+`r round(100 * v$var.fixed / (v$var.fixed + v$var.random + v$var.residual), 1)`%
+of the total variance, participant-level differences accounted for
+`r round(100 * v$var.random / (v$var.fixed + v$var.random + v$var.residual), 1)`%,
+and
+`r round(100 * v$var.residual / (v$var.fixed + v$var.random + v$var.residual), 1)`%
+remained unexplained.*
+
+
+
+
+
+
+
+
+
+
+
+## STEP DURATION
+
+### DESCRIBE step-level (distribution)
 
 ```{r duration-steps, warning=FALSE}
 
 ## SET DATAFRAME
-df <- df_steps
+df <- df_steps_duration
 
 ## grouping by participant, jar, format to get duration by step
 df_by_step <- df |> 
@@ -388,8 +704,6 @@ df_by_step <- df |>
   summarise(
     STEP_DURATION = sum(DURATION)
  )
-
-
 
 ## DISTRIBUTION OF DURATION BY STEP
 g <- df_by_step %>% gf_histogram(~STEP_DURATION, binwidth = 5) +
@@ -408,301 +722,215 @@ ggsave(
 )
 
 
-## GROUPED BARCHART [SUM STEP DURATION X PARTICIPANT by JAR]
-df_steps_dur %>% 
-  ggplot(aes(fill=JAR))+
-    geom_bar(aes(x=PID, y= DURATION), position="dodge", stat="identity") + 
-  scale_fill_brewer(palette="Paired", direction =-1) +
-  theme_minimal() + 
-  labs(title = "Total step DURATION per JAR per Participant",
-       subtitle = "(includes step repeats)")
 
-## GROUPED BARCHART [SUM STEP DURATION X PARTICIPANT by JAR facet FORMAT]
-df_steps_dur %>%
-    ggplot(aes(fill=FORMAT))+
-    scale_fill_brewer(palette="Set2", direction =-1) +
-    geom_bar(aes(x=PID, y= DURATION), position="dodge", stat="identity") +
-  # facet_wrap(~FORMAT) +
-  theme_minimal() +
-  labs(title = "Total step DURATION per FORMAT per Participant",
-       subtitle = "(includes step repeats)")
 
 
 ```
 
-#### JAR-LEVEL DURATION (LINE)
 
-```{r duration-formats}
+### DESCRIBE participant-level
 
-df <- df_steps%>% 
-  group_by(PID, FORMAT,JAR) %>% 
+```{r steps_duration_participant}
+
+## SET DATAFRAME
+df <- df_steps_duration %>% 
+  group_by(PID, JAR, FORMAT,ORDER) %>%
   summarise(
-    time = sum(DURATION)
+    total_duration = sum(as.numeric(DURATION), na.rm = TRUE),
+    .groups = "drop"
   )
 
-# df %>% gf_histogram(~time) +
-#   facet_wrap(~FORMAT) + 
-#   theme_minimal()
+kable(df)
 
-df %>% ggplot(aes(x=FORMAT, y=time)) +
-  geom_jitter(alpha=0.4, width=0.00, aes(color=JAR)) + 
-  geom_line(aes(group=PID))+
-  theme_minimal() + 
-  labs(title = "JAR duration by FORMAT",
-       subtitle="line indicates participant")
-  
 
-## PId level connected line plot 
-g <- df %>% ggplot(aes(x=FORMAT, y=time)) +
-  geom_jitter(alpha=0.4, width=0.00, aes(color=PID)) + 
-  geom_line(aes(group=PID))+
+## GROUPED BARCHART 
+df %>% 
+  ggplot(aes(x=PID, y=total_duration,  fill=JAR))+
+      geom_col(position = "dodge") +
+  facet_wrap(~ORDER, scales = "free_x") +
+  scale_fill_brewer(palette="Paired", direction =-1) +
   theme_minimal() + 
-  labs(title = "JAR duration by FORMAT",
-       subtitle="line indicates participant")
-  
+  labs(title = "Total Duration per JAR per Participant",
+       subtitle = "")
+
+## GROUPED BARCHART 
+df %>% 
+  ggplot(aes(x=PID, y=total_duration, fill=FORMAT))+
+    geom_col(position="dodge") + 
+   facet_wrap(~ORDER, scales = "free_x") + 
+    scale_fill_brewer(palette="Set2", direction =-1) +
+  theme_minimal() + 
+  labs(title = "Total per FORMAT per Participant",
+       subtitle = "")
+
+
+## GROUPED BARCHART [COUNT STEPS X PARTICIPANT by JAR facet FORMAT]
+g <- df %>%
+  ggplot(aes(x=PID, y=total_duration, fill=JAR))+
+    geom_col(position="dodge") +
+  scale_fill_brewer(palette="Paired", direction =-1) +
+  facet_wrap(~FORMAT) +
+  theme_minimal() +
+  labs(title = "Duration per JAR per Participant BY FORMAT",
+       subtitle = "")
+
 g 
 ggsave(
-  filename = "figs/jar_duration_by_participant_line.svg",
+  filename = "figs/step_duration_by_format.svg",
   plot = g,
   device = svglite,
   width = 6,
   height = 4,
   units = "in"
 )
-
-
-
 ```
-#### JAR-LEVEL DURATION (BAR)
 
-```{r duration-steps-participant, warning=FALSE}
+### DESCRIBE jar-level
+```{r steps_duration_jar, warning=FALSE}
+
 
 ## SET DATAFRAME
-
-
-## grouping by participant, jar, format to get duration by step
-df <- df_duration_by_particiapnt <- df_steps |> 
-  group_by(PID,JAR,FORMAT) |> 
+df <- df_duration_by_particiapnt <- df_steps_duration |> 
+  group_by(PID,JAR,FORMAT,ORDER) |> 
   summarise(
     DURATION = sum(DURATION)
  )
 
 
-## GROUPED BARCHART [all participants total DURATION X PARTICIPANT by JAR facet FORMAT]
+## GROUPED BARCHART by JAR
 df %>%
     ggplot(aes(fill=JAR))+
     scale_fill_brewer(palette="Paired", direction =-1) +
     geom_bar(aes(x=FORMAT, y= DURATION), position="dodge", stat="identity") +
-  # facet_wrap(~FORMAT) +
+  facet_wrap(~ORDER) +
   theme_minimal() +
-  labs(title = "Total step DURATION per FORMAT per Participant",
+  labs(title = "Total DURATION per FORMAT per Participant",
        subtitle = "(includes step repeats)")
 
 
+## GROUPED BARCHART by FORMAT
+df %>%
+    ggplot(aes(fill=FORMAT))+
+    scale_fill_brewer(palette="Set2", direction =-1) +
+    geom_bar(aes(x=JAR, y= DURATION), position="dodge", stat="identity") +
+  facet_wrap(~ORDER) +
+  theme_minimal() +
+  labs(title = "Total DURATION by FORMAT and JAR",
+       subtitle = "(includes step repeats)")
 ```
-#### JAR-LEVEL DURATION (GGSTATSPLOT)
 
-```{r duration-participant, warning=FALSE}
+### TEST (jar-level) JAR
+
+Is there a significant difference in duration of steps PER JAR? 
+```{r TEST-step-duration-jar}
 
 ## SET DATAFRAME
+df <- df_steps_duration %>% 
+  group_by(PID, JAR, FORMAT, ORDER) %>%
+  dplyr::summarize( time = as.double(sum(DURATION)))
 
+## GGSTATSPLOT _ GROUPED WITHIN STATS
+grouped_ggwithinstats(data = df, 
+              x = JAR, y = time,
+              grouping.var = ORDER,
+              by = PID,
+              type= "nonparametric",
+              results.subtitle = TRUE,
+              bf.message = FALSE, 
+              ggtheme = ggplot2::theme_minimal())
 
-## grouping by participant, jar, format to get duration by step
-df <- df_duration_by_particiapnt <- df_steps |> 
-  group_by(PID,JAR, FORMAT) |> 
-  summarise(
-    DURATION = as.double(sum(DURATION))
- )
-
-
-library(ggstatsplot)
-grouped_ggwithinstats(df, x=FORMAT, y=DURATION, 
-                      grouping.var = JAR, 
-                      subject.id = PID,
-                      type = "parametric",
-    pairwise.comparisons = TRUE)
-
-```
-
-
-## ERRORS
-
-### COUNT ERRORS
-
-```{r count-errors}
-df <- df_errors
-
-print('Number of errors per jar per participant')
-table(df$PID, df$JAR, df$FORMAT)
-
-
-## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by JAR]
-df %>% 
-  ggplot(aes(x=PID, fill=JAR))+
-    geom_bar(position="dodge") + 
-  scale_fill_brewer(palette="Paired", direction =-1) +
+## GGPLOT LINE GRAPH WITHIN SUBJECTS
+df %>%
+  ggplot(aes(JAR, time, group = PID, color=JAR)) +
+  geom_line(alpha = .3) +
+  scale_color_brewer(palette="Paired", direction =-1) +
+  geom_point() +
+  facet_wrap(~ORDER) +
   theme_minimal() + 
-  labs(title = "Errors per JAR per Participant")
+  labs(title = "Step DURATION by JAR and ORDER")
 
-## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by JAR facet FORMAT]
-df %>% 
-  ggplot(aes(x=PID, fill=JAR))+
-  scale_fill_brewer(palette="Paired", direction =-1) +
-    geom_bar(position="dodge") + 
-  facet_wrap(~FORMAT) + 
-  theme_minimal() + 
-  labs(title = "Errors per JAR per Participant BY FORMAT")
-
-
-## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by JAR facet FORMAT]
-df %>% 
-  ggplot(aes(x=PID, fill=FORMAT))+
-    geom_bar(position="dodge") + 
-  facet_wrap(~ERROR_TYPE) + 
-  theme_minimal() + 
-  labs(title = "Errors per FORMAT BY TYPE")
-
-## GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
-df %>% 
-  ggplot(aes(x=FORMAT, fill=ERROR_TYPE))+
-    geom_bar(position="dodge") + 
-  theme_minimal() + 
-  labs(title = "Errors by FORMAT and TYPE")
-
-## FACETED GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
-df %>% 
-  ggplot(aes(x=FORMAT, fill=ERROR_TYPE))+
-    geom_bar(position="dodge") + 
-  facet_wrap(~JAR) + 
-  theme_minimal() + 
-  labs(title = "Errors by FORMAT and TYPE")
-
-
-## GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
-df %>% 
-  ggplot(aes(x=FORMAT, fill=ERROR))+
-    geom_bar(position="dodge") + 
-  theme_minimal() + 
-  labs(title = "Errors by FORMAT and ERROR CODE")
-
-## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT facet FORMAT X JAR]
-df %>% 
-  ggplot(aes(x=PID, fill=ERROR_TYPE))+
-    geom_bar() + 
-  facet_wrap(JAR~FORMAT) + 
-  theme_minimal() + 
-  labs(title = "Errors per JAR per Participant BY FORMAT")
-
-
-
-
-
-## ZOES DETAIL GRAPH
-g <- df %>% 
-  ggplot(aes(x=ERROR_TYPE, fill=ERROR))+
-    geom_bar(stat="count") + 
-  facet_wrap(~FORMAT) +
-  theme_minimal() + 
-  labs(title = "Errors by FORMAT and TYPE")
-
-g 
-ggsave(
-  filename = "figs/errors_by_format_type.svg",
-  plot = g,
-  device = svglite,
-  width = 10,
-  height = 4,
-  units = "in"
+## ANOVA
+a <- aov_ez(
+  id = "PID",
+  dv = "time",
+  within = c("JAR"),
+  between = c("ORDER"),
+  data = df
 )
-
+summary(a)
 
 
 ```
 
-### COUNT ERROR RECOVERY
-
-```{r count-recoveries}
-df <- df_error_recoveries
-
-print('Number of recovery type per jar per participant')
-table(df$PID, df$JAR, df$RECOVERY)
 
 
-  ## GROUPED BARCHART [COUNT RECOVERIES X by JAR]
-df %>% 
-  ggplot(aes(x=PID, fill=RECOVERY))+
-    geom_bar(position="dodge") + 
-  facet_grid(FORMAT~JAR) +
+### TEST (jar-level) FORMAT
+Is there a significant difference in duration of steps PER FORMAT? 
+```{r TEST-step-duration-FORMAT}
+
+## SET DATAFRAME
+df <- df_steps_duration %>% 
+  group_by(PID, JAR, FORMAT, ORDER) %>%
+  dplyr::summarize( time = as.double(sum(DURATION)))
+
+## GGSTATSPLOT _ GROUPED WITHIN STATS
+grouped_ggwithinstats(data = df, 
+              x = FORMAT, y = time,
+              grouping.var = ORDER,
+              by = PID,
+              type= "nonparametric",
+              results.subtitle = TRUE,
+              bf.message = FALSE, 
+              ggtheme = ggplot2::theme_minimal())
+
+## GGPLOT LINE GRAPH WITHIN SUBJECTS
+df %>%
+  ggplot(aes(FORMAT, time, group = PID, color=FORMAT)) +
+  geom_line(alpha = .3, color="black") +
+  scale_color_brewer(palette="Set2", direction =-1) +
+  geom_point() +
+  facet_wrap(~ORDER) +
   theme_minimal() + 
-  labs(title = "Recoveries per JAR per Participant")
+  labs(title = "Participant Step Duration by FORMAT and ORDER")
 
-## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by FORMAT]
-df %>% 
-  ggplot(aes(x=RECOVERY, fill=FORMAT))+
-    geom_bar(position="dodge") + 
-  # facet_wrap(FORMAT) + 
-  theme_minimal() + 
-  labs(title = "Errors RECOVERY by FORMAT")
-
-## GROUPED BARCHART [COUNT ERRORS X PARTICIPANT by FORMAT and JAR]
-df %>% 
-  ggplot(aes(x=RECOVERY, fill=FORMAT))+
-    geom_bar(position="dodge") + 
-  facet_wrap(~JAR) + 
-  theme_minimal() + 
-  labs(title = "Errors RECOVERY by FORMAT and JAR")
-
-
-## GROUPED BARCHART []
-df %>% 
-  ggplot(aes(x=FORMAT, fill=RECOVERY))+
-    geom_bar() + 
-  scale_fill_brewer(palette="Paired", direction =1) +
-  facet_wrap(~JAR) + 
-  theme_minimal() + 
-  labs(title = "Errors RECOVERY by FORMAT")
-
-
-## GROUPED BARCHART []
-g <- df %>% 
-  ggplot(aes(x=FORMAT, fill=RECOVERY))+
-    geom_bar() + 
-  scale_fill_brewer(palette="Paired", direction =1) +
-  facet_wrap(~JAR) + 
-  theme_minimal() + 
-  labs(title = "Errors RECOVERY by FORMAT")
-
-g 
-ggsave(
-  filename = "figs/errors_recovery.svg",
-  plot = g,
-  device = svglite,
-  width = 6,
-  height = 4,
-  units = "in"
+## ANOVA
+a <- aov_ez(
+  id = "PID",
+  dv = "time",
+  within = c("FORMAT"),
+  between = c("ORDER"),
+  data = df
 )
+summary(a)
+
 
 ```
-#### todo 
-- ratio of recovered to unrecovered 
 
 
 
-## MODELS
 
-### PARTICIPANT LEVEL DURATION MODEL
 
-### Step Duration
+
+
+
+
+
+
+
+
+
+
+### MODEL STEP DURATION
 
 What predicts duration per step?
 
 - TODO add fixed effect of experience
 - TODO explore fixed effect of step number
 
-```{r time-vis}
+```{r VIS-step-duration}
 
 ## predict step time by format and participant
-df <- df_steps_dur %>% 
+df <- df_steps_duration %>% 
   mutate(
     dur = as.double(DURATION)
   )
@@ -788,10 +1016,10 @@ ggplot(df, aes(x = FORMAT, y = dur, colour = FORMAT)) +
 
 ```
 
-```{r model-time}
+```{r MODEL-step-duration}
 
 ## predict step time by format and participant
-df <- df_steps_dur %>% 
+df <- df_steps_duration %>% 
   mutate(
     dur = as.double(DURATION)
   )
@@ -799,29 +1027,31 @@ df <- df_steps_dur %>%
 ## MODEL 1 | Simple Main Effects
 m1 <- lmer(dur ~ FORMAT + JAR + (1|PID), data = df)
 summary(m1)
-anova(m1)
-report(m1)
+# anova(m1)
+# report(m1)
 
 ## MODEL 2 | Interaction Main Effects
-# m2 <- lmer(dur ~ FORMAT * JAR + (1|PID), data = df)
-# summary(m2)
+m2 <- lmer(dur ~ FORMAT * JAR + (1|PID), data = df)
+summary(m2)
 # anova(m2)
-# compare_performance(m1,m2, rank = TRUE)
+compare_performance(m1,m2, rank = TRUE)
+report(m2)
 ## interaction model is not a better fit
 
 ## PLOT MODEL ESTIMATES
 # plot_model(m1, show.values= TRUE, type = "re") # random effects
- plot_model(m1, show.values= TRUE, type = "est", title = "Model Estimate (dur ~ FORMAT + JAR + (1|PID)")
+ plot_model(m2, show.values= TRUE, type = "est", title = "Model Estimate (dur ~ FORMAT * JAR + (1|PID)")
+ plot_model(m2, show.values= TRUE, type = "int", title = "Model Estimate (dur ~ FORMAT * JAR + (1|PID)")
 
 ## DESCRIBE MODEL VARIANCE EXPLAINED
-v <- get_variance(m1)
+v <- get_variance(m2)
 t <- v$var.fixed + v$var.random + v$var.residual
 fixed <- v$var.fixed/t * 100
 random <- v$var.random/t * 100
 residual <- v$var.residual/t * 100
 
 ## MODEL TABLE
-m1_tab <- tidy(m1, effects = "fixed") %>%
+m2_tab <- tidy(m1, effects = "fixed") %>%
   mutate(
     estimate  = round(estimate, 2),
     std.error = round(std.error, 2),
@@ -832,9 +1062,9 @@ m1_tab <- tidy(m1, effects = "fixed") %>%
       sprintf("= %.3f", p.value)
     )
   )
-format_row <- filter(m1_tab, term == "FORMATAPP")
-jar_row    <- filter(m1_tab, term == "JARjar2")
-int_row    <- filter(m1_tab, term == "(Intercept)")
+format_row <- filter(m2_tab, term == "FORMATAPP")
+jar_row    <- filter(m2_tab, term == "JARjar2")
+int_row    <- filter(m2_tab, term == "(Intercept)")
 
 ```
 
@@ -845,14 +1075,16 @@ The effect of FORMAT was not statistically significant, β =
 `r format_row$estimate`, SE = `r format_row$std.error`, *t* =
 `r format_row$statistic`, *p* `r format_row$p.value`.
 
-In contrast, JAR significantly predicted step duration, β =
+The effect of JAR was not significantly significant, β =
 `r jar_row$estimate`, SE = `r jar_row$std.error`, *t* =
 `r jar_row$statistic`, *p* `r jar_row$p.value`, indicating that steps
 performed in Jar 2 took approximately `r jar_row$estimate` seconds
 longer than those performed in Jar 1.
 
-The estimated mean duration in the reference condition was
-`r int_row$estimate` seconds (SE = `r int_row$std.error`).
+The effect of the interaction of FORMAT and JAR was not significantly significant, β =
+`r int_row$estimate`, SE = `r int_row$std.error`, *t* =
+`r int_row$statistic`, *p* `r int_row$p.value`. 
+
 
 The participant-level variance was `r round(v$var.random, 2)` and the
 residual variance was `r round(v$var.residual, 2)`.
@@ -865,9 +1097,12 @@ and
 `r round(100 * v$var.residual / (v$var.fixed + v$var.random + v$var.residual), 1)`%
 remained unexplained.*
 
-### Error Count
-What predicts number of errors?
 
+
+
+
+## ERROR COUNT
+### SETUP Error Count
 
 ```{r setup-error-counts}
 
@@ -911,19 +1146,138 @@ error_counts <- valid_conditions %>%
     by = c("PID", "JAR", "FORMAT")
   ) %>%
   mutate(
-    n_errors = replace_na(n_errors, 0)
+    n_errors = replace_na(n_errors, 0),
+    JAR = as.factor(JAR),
+    FORMAT = as.factor(FORMAT)
   ) %>%
-  arrange(PID, JAR)
+  arrange(PID, JAR) 
 
-rm(error_counts_obs, valid_conditions)
+df_error_counts <- error_counts %>% 
+## CREATE ORDER FACTOR 
+  mutate(
+    ORDER = case_when(
+      (JAR == "jar1" & FORMAT == "BOOKLET") |
+      (JAR == "jar2" & FORMAT == "APP") ~ "BOOK_FIRST",
+
+      (JAR == "jar1" & FORMAT == "APP") |
+      (JAR == "jar2" & FORMAT == "BOOKLET") ~ "APP_FIRST"),
+  ORDER = factor(ORDER),
+  ORDER = forcats::fct_rev(ORDER)) %>% 
+  droplevels()
+
+rm(error_counts_obs, valid_conditions, error_counts)
 ```
+
+### DESCRIBE Error Count
+
+```{r count-errors}
+df <- df_error_counts
+
+
+## GROUPED BARCHART 
+df %>% 
+  ggplot(aes(x=PID, fill=JAR, y = n_errors))+
+    geom_col(position = "dodge") +
+    facet_wrap(~ORDER, scales = "free_x") + 
+    scale_fill_brewer(palette="Paired", direction =-1) +
+    theme_minimal() + 
+    labs(title = "Errors per JAR per Participant")
+
+## GROUPED BARCHART 
+df %>% 
+  ggplot(aes(x=PID, fill=FORMAT, y = n_errors))+
+    geom_col(position = "dodge") +
+    facet_wrap(~ORDER, scales = "free_x") + 
+    scale_fill_brewer(palette="Set2", direction =-1) +
+    theme_minimal() + 
+    labs(title = "Errors per JAR per Participant")
+
+```
+
+### TEST Error Count JAR
+```{r test-error-count-JAR}
+df <- df_error_counts
+
+## GGSTATSPLOT _ GROUPED WITHIN STATS
+grouped_ggwithinstats(data = df, 
+              x = JAR, y = n_errors,
+              grouping.var = ORDER,
+              by = PID,
+              type= "nonparametric",
+              results.subtitle = TRUE,
+              bf.message = FALSE, 
+              ggtheme = ggplot2::theme_minimal())
+
+## GGPLOT LINE GRAPH WITHIN SUBJECTS
+df %>%
+  ggplot(aes(JAR, n_errors, group = PID, color=JAR)) +
+  geom_line(alpha = .3) +
+  scale_color_brewer(palette="Paired", direction =-1) +
+  geom_point() +
+  facet_wrap(~ORDER) +
+  theme_minimal() + 
+  labs(title = "Error Count by JAR and ORDER")
+
+## ANOVA
+a <- aov_ez(
+  id = "PID",
+  dv = "n_errors",
+  within = c("JAR"),
+  between = c("ORDER"),
+  data = df
+)
+summary(a)
+
+
+```
+
+### TEST Error Count FORMAT
+```{r test-error-count-FORMAT}
+df <- df_error_counts
+
+## GGSTATSPLOT _ GROUPED WITHIN STATS
+grouped_ggwithinstats(data = df, 
+              x = FORMAT, y = n_errors,
+              grouping.var = ORDER,
+              by = PID,
+              type= "nonparametric",
+              results.subtitle = TRUE,
+              bf.message = FALSE, 
+              ggtheme = ggplot2::theme_minimal())
+
+## GGPLOT LINE GRAPH WITHIN SUBJECTS
+df %>%
+  ggplot(aes(FORMAT, n_errors, group = PID, color=JAR)) +
+  geom_line(alpha = .3, color="black") +
+  scale_fill_brewer(palette="Set2", direction =-1) +
+  geom_point() +
+  facet_wrap(~ORDER) +
+  theme_minimal() + 
+  labs(title = "Error Count by JAR and ORDER")
+
+## ANOVA
+a <- aov_ez(
+  id = "PID",
+  dv = "n_errors",
+  within = c("FORMAT"),
+  between = c("ORDER"),
+  data = df
+)
+summary(a)
+
+
+```
+
+
+### MODEL Error Count
+What predicts number of errors?
 
 ```{r error-vis}
 
 ## set dataframe
-df <- error_counts
+df <- df_error_counts
 
-ggplot(error_counts,
+df %>% ggplot(
        aes(x = FORMAT,
            y = n_errors,
            colour = JAR)) +
@@ -955,111 +1309,83 @@ ggplot(error_counts,
        y = "Number of Errors")
 
 
-## INDIVIDUAL DIFFERENCES BY JAR
-ggplot(df, aes(x = JAR, y = n_errors, group = PID)) +
-  geom_line(alpha = 0.35) +
-  geom_point(size = 2, alpha = 0.8) +
-  theme_bw() +
-  labs(
-    x = "Jar",
-    y = "Error Count"
-  )+ 
-  theme_minimal() + 
-  labs(title = "Error Count by JAR",
-                         subtitle = "(lines connect PIDs)")
-
-## INDIVIDUAL DIFFERENCES BY JAR
-ggplot(df, aes(x = FORMAT, y = n_errors, group = PID)) +
-  geom_line(alpha = 0.35) +
-  geom_point(size = 2, alpha = 0.8) +
-  theme_bw() +
-  labs(
-    x = "Format",
-    y = "Error Count"
-  )+
-  theme_minimal() + 
-  labs(title = "Error Count by FORMAT",
-                         subtitle = "(lines connect PIDs)")
 
 
-
-######## DROP OUTLINES 
-### DROP P10, P13
-df <- df |> filter(PID %nin% c("P10", "P13")) |> droplevels()
-
-
-### removed 
-ggplot(df,
-       aes(x = FORMAT,
-           y = n_errors,
-           colour = JAR)) +
-  geom_boxplot(
-    aes(group = FORMAT),
-    outlier.shape = NA
-  ) +
-  geom_jitter(width = 0.08, alpha = 0.6) +
-    # DISPLAY MEAN AS POINT
-  stat_summary(
-    fun = mean,
-    geom = "point",
-    shape = 18,
-    size = 3,
-    colour = "black"
-  ) +
-  # MEAN LABEL
-  stat_summary(
-    fun = mean,
-    geom = "text",
-    aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
-    vjust = -0.8,
-    colour = "black",
-    size = 3
-  ) +
-  facet_wrap(~ JAR) +
-  theme_minimal() + 
-  labs(title = "Error Count by Format & Jar", 
-       y = "Number of Errors")
-
-
-## INDIVIDUAL DIFFERENCES BY JAR
-ggplot(df, aes(x = JAR, y = n_errors, group = PID)) +
-  geom_line(alpha = 0.35) +
-  geom_point(size = 2, alpha = 0.8) +
-  theme_bw() +
-  labs(
-    x = "Jar",
-    y = "Error Count"
-  )+ 
-  theme_minimal() + 
-  labs(title = "Error Count by JAR",
-                         subtitle = "(lines connect PIDs)")
-
-## INDIVIDUAL DIFFERENCES BY JAR
-ggplot(df, aes(x = FORMAT, y = n_errors, group = PID)) +
-  geom_line(alpha = 0.35) +
-  geom_point(size = 2, alpha = 0.8) +
-  theme_bw() +
-  labs(
-    x = "Format",
-    y = "Error Count"
-  )+
-  theme_minimal() + 
-  labs(title = "Error Count by FORMAT",
-                         subtitle = "(lines connect PIDs)")
+# ######## DROP OUTLINES 
+# ### DROP P10, P13
+# # df <- df |> filter(PID %nin% c("P10", "P13")) |> droplevels()
+# 
+# 
+# ### removed 
+# ggplot(df,
+#        aes(x = FORMAT,
+#            y = n_errors,
+#            colour = JAR)) +
+#   geom_boxplot(
+#     aes(group = FORMAT),
+#     outlier.shape = NA
+#   ) +
+#   geom_jitter(width = 0.08, alpha = 0.6) +
+#     # DISPLAY MEAN AS POINT
+#   stat_summary(
+#     fun = mean,
+#     geom = "point",
+#     shape = 18,
+#     size = 3,
+#     colour = "black"
+#   ) +
+#   # MEAN LABEL
+#   stat_summary(
+#     fun = mean,
+#     geom = "text",
+#     aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
+#     vjust = -0.8,
+#     colour = "black",
+#     size = 3
+#   ) +
+#   facet_wrap(~ JAR) +
+#   theme_minimal() + 
+#   labs(title = "Error Count by Format & Jar", 
+#        y = "Number of Errors")
+# 
+# 
+# ## INDIVIDUAL DIFFERENCES BY JAR
+# ggplot(df, aes(x = JAR, y = n_errors, group = PID)) +
+#   geom_line(alpha = 0.35) +
+#   geom_point(size = 2, alpha = 0.8) +
+#   theme_bw() +
+#   labs(
+#     x = "Jar",
+#     y = "Error Count"
+#   )+ 
+#   theme_minimal() + 
+#   labs(title = "Error Count by JAR",
+#                          subtitle = "(lines connect PIDs)")
+# 
+# ## INDIVIDUAL DIFFERENCES BY JAR
+# ggplot(df, aes(x = FORMAT, y = n_errors, group = PID)) +
+#   geom_line(alpha = 0.35) +
+#   geom_point(size = 2, alpha = 0.8) +
+#   theme_bw() +
+#   labs(
+#     x = "Format",
+#     y = "Error Count"
+#   )+
+#   theme_minimal() + 
+#   labs(title = "Error Count by FORMAT",
+#                          subtitle = "(lines connect PIDs)")
 
 
 ```
 
-
-
 ```{r model-error-poisson}
 
 ## df = error counts dataframe
-df <- error_counts 
+df <- df_error_counts 
 
 ######## DROP OUTLINES 
 ### DROP P10, P13
-df <- df |> filter(PID %nin% c("P10", "P13")) |> droplevels()
+# df <- df |> filter(PID %nin% c("P10", "P13")) |> droplevels()
 
 ## MODEL 1 | Poisson model for count data
 m_pois <- glmer(
@@ -1186,85 +1512,87 @@ An overdispersion diagnostic found no evidence that the Poisson assumption was v
 
 
 
-### TODO Predict Error TYPE by FORMAT
-
-```{r }
-
-df <- df_errors
-
-## PREDICT TYPE by FORMAT 
-
-library(glmmTMB)
-
-m1 <- glmmTMB(
-  ERROR_TYPE ~ FORMAT + JAR + (1 | PID),
-  data = df,
-  family = multinomial()
-)
 
 
-library(brms)
+## ERROR TYPE
 
-model <- brm(
-  ERROR_TYPE ~ FORMAT + JAR + (1 | PID),
-  data = df,
-  family = categorical()
-)
-
-
-
-install.packages("mclogit")
-library(mclogit)
-
-model <- mblogit(
-  ERROR_TYPE ~ FORMAT + JAR,
-  random = ~ 1 | PID,
-  data = df
-)
-
-
-```
-### TODO Predict Error TYPE by STEP X FORMAT 
-
-
-
-
-
-## PREDICT RECOVERY 
-
-### vis
+### DESCRIBE Error Type
 
 ```{r}
 
-df <- df_error_recoveries
+## SET ERRORS DF
+df <- df_errors
 
-
-
-
-## GROUPED BARCHART []
+## GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
 df %>% 
-  ggplot(aes(x=FORMAT, fill=RECOVERY))+
-    geom_bar() + 
-  scale_fill_brewer(palette="Paired", direction =1) +
+  ggplot(aes(x=FORMAT, fill=ERROR_TYPE))+
+    geom_bar(position="dodge") + 
+  theme_minimal() + 
+  labs(title = "Errors by FORMAT and TYPE")
+
+## FACETED GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
+df %>% 
+  ggplot(aes(x=FORMAT, fill=ERROR_TYPE))+
+    geom_bar(position="dodge") + 
   facet_wrap(~JAR) + 
   theme_minimal() + 
-  labs(title = "Errors RECOVERY by FORMAT")
+  labs(title = "Errors by FORMAT and TYPE")
 
 
-## GROUPED BARCHART []
-df %>% 
-  ggplot(aes(x=FORMAT, fill=RECOVERY))+
-    geom_bar() + 
-  scale_fill_brewer(palette="Paired", direction =1) +
-  facet_wrap(~JAR) + 
+
+## ZOES DETAIL GRAPH
+g <- df %>% 
+  ggplot(aes(x=ERROR_TYPE, fill=ERROR))+
+    geom_bar(stat="count") + 
+  facet_wrap(~FORMAT) +
   theme_minimal() + 
-  labs(title = "Errors RECOVERY by FORMAT")
+  labs(title = "Errors by FORMAT and TYPE")
+
+g 
+ggsave(
+  filename = "figs/errors_by_format_type.svg",
+  plot = g,
+  device = svglite,
+  width = 10,
+  height = 4,
+  units = "in"
+)
+
 
 
 ```
 
 
-### model 
+
+## ERROR RECOVERY
+
+### DESCRIBE Error Recovery
+
+```{r count-recoveries}
+df <- df_error_recoveries
+
+## GROUPED BARCHART []
+g <- df %>% 
+  ggplot(aes(x=FORMAT, fill=RECOVERY))+
+    geom_bar() + 
+  scale_fill_brewer(palette="Paired", direction =1) +
+  facet_wrap(~JAR) + 
+  theme_minimal() + 
+  labs(title = "Errors RECOVERY by FORMAT")
+
+g 
+ggsave(
+  filename = "figs/errors_recovery.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
+```
+### MODEL Error Recovery
+
 ```{r errors-recovery}
 
 ## one row per error
@@ -1277,15 +1605,69 @@ m1 <- glmer(
   data = df,
   family = binomial(link = "logit")
 )
+# summary(m1)
 
 m2 <- glmer(
   RECOVERY ~ FORMAT * JAR + (1 | PID),
   data = df,
   family = binomial(link = "logit")
 )
+summary(m2)
+
+# compare_performance(m1,m2, rank = TRUE)
+
+
+# report(m1)
+report(m2)
+
+
+plot_model(m2, type = "est", title = "error recovery ~ JAR * FORMAT", show.value = TRUE, show.p=TRUE)
+plot_model(m2, type = "int", title = "error recovery ~ JAR * FORMAT")
+
+
+```
 
 
 
+
+## WIP
+
+
+### TODO Predict Error TYPE by FORMAT
+
+```{r }
+
+# df <- df_errors
+# 
+# ## PREDICT TYPE by FORMAT 
+# 
+# library(glmmTMB)
+# 
+# m1 <- glmmTMB(
+#   ERROR_TYPE ~ FORMAT + JAR + (1 | PID),
+#   data = df,
+#   family = multinomial()
+# )
+# 
+# 
+# library(brms)
+# 
+# model <- brm(
+#   ERROR_TYPE ~ FORMAT + JAR + (1 | PID),
+#   data = df,
+#   family = categorical()
+# )
+# 
+# 
+# 
+# install.packages("mclogit")
+# library(mclogit)
+# 
+# model <- mblogit(
+#   ERROR_TYPE ~ FORMAT + JAR,
+#   random = ~ 1 | PID,
+#   data = df
+# )
 
 
 ```
