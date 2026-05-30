@@ -86,6 +86,15 @@ library(ggstatsplot) ## plotting w/ statistical tests
 ### import steps
 ```{r import-steps}
 
+
+## IMPORT COMPLEXITY
+lookup_complexity <- read_csv("data/input/complexity_score.csv", col_select = c('Step','complexity_score', 'complexity_category')) %>% 
+  mutate(
+    STEP = as_factor(Step)
+  ) %>% select(-Step)
+
+
+
 ## DF_STEPS_RAW
 ## maxQDA export of all retrieved segments for the query (all documents) + (highest level step code [includes each numbered step + Step Repeat + Flipping/Tapping Through Fast])
 ## NOTE: need to handle Step Repeat + Flipping/Tapping Through Fast seperately 
@@ -133,6 +142,13 @@ df_steps_raw <- read_csv("data/input/wip_steps.csv", col_select =
     STEP = fct_relevel(STEP, "Step 0A","Step 0B")
   ) |> 
   select(-JUNK, -MASTER_STEP) |> 
+  left_join(
+    lookup_complexity,
+    by = "STEP"
+  ) %>% 
+  mutate(
+    complexity_category = as_factor(complexity_category)
+  ) %>% 
   droplevels()
 
 
@@ -431,7 +447,6 @@ write.csv(df_participants,"data/output/df_participants.csv", row.names = FALSE)
 ```
 
 
-### TODO participant-level wrangling
 ### TODO import error pairs
 ### TODO import step-pair 
 
@@ -810,12 +825,12 @@ remained unexplained.*
 
 ## STEP DURATION
 
-### DESCRIBE step-level (distribution)
+### DESCRIBE step distribution (all)
 
 ```{r duration-steps, warning=FALSE}
 
 ## SET DATAFRAME
-df <- df_steps_duration
+df <- df_steps_duration 
 
 ## grouping by participant, jar, format to get duration by step
 df_by_step <- df |> 
@@ -840,13 +855,101 @@ ggsave(
   units = "in"
 )
 
+```
 
+### DESCRIBE step distribution (by step)
+```{r duration-step-level, warning=FALSE}
 
+## SET DATAFRAME
+df <- df_steps_duration 
 
+## grouping by participant, jar, format to get duration by step
+df_by_step <- df |> 
+  group_by(PID,STEP,JAR,FORMAT) |> 
+  summarise(
+    STEP_DURATION = sum(DURATION)
+ )
+
+## DISTRIBUTION OF DURATION BY STEP
+g <- df_by_step %>% gf_histogram(~STEP_DURATION, binwidth = 5, fill=~FORMAT) +
+  facet_wrap(~STEP) +
+  theme_minimal() +
+  labs(title = "Distribution of STEP DURATION (in seconds)")
+
+g 
+ggsave(
+  filename = "figs/step_level_distribution.svg",
+  plot = g,
+  device = svglite,
+  width = 24,
+  height = 24,
+  units = "in"
+)
 
 ```
 
 
+
+### DESCRIBE step distribution (by complexity category)
+```{r duration-step-complexity-category, warning=FALSE}
+
+## SET DATAFRAME
+df <- df_steps_duration 
+
+## grouping by participant, jar, format to get duration by step
+df_by_step <- df |> 
+  group_by(PID,complexity_category,JAR,FORMAT) |> 
+  summarise(
+    STEP_DURATION = sum(DURATION)
+ )
+
+## DISTRIBUTION OF DURATION BY STEP
+g <- df_by_step %>% gf_histogram(~STEP_DURATION, fill=~FORMAT) +
+  facet_wrap(~complexity_category) +
+  theme_minimal() +
+  labs(title = "Distribution of STEP DURATION (in seconds) by complexity")
+
+g 
+ggsave(
+  filename = "figs/step_category_distribution.svg",
+  plot = g,
+  device = svglite,
+  width = 8,
+  height = 8,
+  units = "in"
+)
+
+```
+### DESCRIBE step distribution (by complexity score)
+```{r duration-step-complexity-score, warning=FALSE}
+
+## SET DATAFRAME
+df <- df_steps_duration 
+
+## grouping by participant, jar, format to get duration by step
+df_by_step <- df |> 
+  group_by(PID,complexity_score,JAR,FORMAT) |> 
+  summarise(
+    STEP_DURATION = sum(DURATION)
+ )
+
+## DISTRIBUTION OF DURATION BY STEP
+g <- df_by_step %>% gf_histogram(~STEP_DURATION, fill=~FORMAT) +
+  facet_wrap(~complexity_score) +
+  theme_minimal() +
+  labs(title = "Distribution of STEP DURATION (in seconds) by complexity")
+
+g 
+ggsave(
+  filename = "figs/step_complexityScore_distribution.svg",
+  plot = g,
+  device = svglite,
+  width = 8,
+  height = 8,
+  units = "in"
+)
+
+```
 ### DESCRIBE participant-level
 
 ```{r steps_duration_participant}
@@ -1052,7 +1155,7 @@ What predicts duration per step?
 df <- df_steps_duration %>% 
   mutate(
     dur = as.double(DURATION)
-  )
+  )%>% filter(STEP %nin% c("Step 0A","Step 0B","Flipping/Tapping Through Fast")) %>% droplevels()
 
 ## PLOT RAW DATA   
 ## STRIP PLOT + MEAN LABEL
@@ -1089,6 +1192,40 @@ ggplot(df, aes(x = FORMAT, y = dur, colour = FORMAT)) +
   labs(title = "Step Duration by Format & Jar",
        y = "Duration (s)")
 
+## PLOT RAW DATA   
+## STRIP PLOT + MEAN LABEL
+ggplot(df, aes(x = complexity_category, y = dur, colour = FORMAT)) +
+  geom_boxplot(
+    aes(group = complexity_category),
+    width = 0.5,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    width = 0.1,
+    alpha = 0.6,
+    size = 0.5
+  ) +
+  # DISPLAY MEAN AS POINT
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 18,
+    size = 3,
+    colour = "black"
+  ) +
+  # MEAN LABEL
+  stat_summary(
+    fun = mean,
+    geom = "text",
+    aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
+    vjust = -0.8,
+    colour = "black",
+    size = 3
+  ) +
+  facet_wrap(FORMAT~ JAR) +
+  theme_minimal() + 
+  labs(title = "Step Duration by Complexity, Format & Jar",
+       y = "Duration (s)")
 
 
 # ######## DROP OUTLINES 
@@ -1138,10 +1275,11 @@ ggplot(df, aes(x = FORMAT, y = dur, colour = FORMAT)) +
 ```{r MODEL-step-duration}
 
 ## predict step time by format and participant
+## predict step time by format and participant
 df <- df_steps_duration %>% 
   mutate(
     dur = as.double(DURATION)
-  )
+  )%>% filter(STEP %nin% c("Step 0A","Step 0B","Flipping/Tapping Through Fast")) %>% droplevels()
 
 ## MODEL 1 | Simple Main Effects
 m1 <- lmer(dur ~ FORMAT + JAR + (1|PID), data = df)
@@ -1149,18 +1287,26 @@ summary(m1)
 # anova(m1)
 # report(m1)
 
-## MODEL 2 | Interaction Main Effects
-m2 <- lmer(dur ~ FORMAT * JAR + (1|PID), data = df)
+## MODEL 2 | INCLUDE Complexity
+m2 <- lmer(dur ~ complexity_category + FORMAT + JAR + (1|PID), data = df)
 summary(m2)
-# anova(m2)
+anova(m2)
 compare_performance(m1,m2, rank = TRUE)
 report(m2)
-## interaction model is not a better fit
+## M2 is a better fit 
+
+## MODEL 2 | Interaction Main Effects
+m3 <- lmer(dur ~ complexity_category + FORMAT * JAR + (1|PID), data = df)
+summary(m3)
+anova(m3)
+compare_performance(m1,m2,m3, rank = TRUE)
+## interaction model is NOT a better fit
+
 
 ## PLOT MODEL ESTIMATES
 # plot_model(m1, show.values= TRUE, type = "re") # random effects
- plot_model(m2, show.values= TRUE, type = "est", title = "Model Estimate (dur ~ FORMAT * JAR + (1|PID)")
- plot_model(m2, show.values= TRUE, type = "int", title = "Model Estimate (dur ~ FORMAT * JAR + (1|PID)")
+ plot_model(m2, show.values= TRUE, type = "est", title = "Model Estimate (dur ~ COMPLEXITY + FORMAT + JAR + (1|PID)")
+ plot_model(m2, show.values= TRUE, type = "pred", title = "Model Estimate (dur ~ COMPLEXITY + FORMAT + JAR + (1|PID)")
 
 ## DESCRIBE MODEL VARIANCE EXPLAINED
 v <- get_variance(m2)
@@ -1170,39 +1316,13 @@ random <- v$var.random/t * 100
 residual <- v$var.residual/t * 100
 
 ## MODEL TABLE
-m2_tab <- tidy(m1, effects = "fixed") %>%
-  mutate(
-    estimate  = round(estimate, 2),
-    std.error = round(std.error, 2),
-    statistic = round(statistic, 2),
-    p.value   = ifelse(
-      p.value < .001,
-      "< .001",
-      sprintf("= %.3f", p.value)
-    )
-  )
-format_row <- filter(m2_tab, term == "FORMATAPP")
-jar_row    <- filter(m2_tab, term == "JARjar2")
-int_row    <- filter(m2_tab, term == "(Intercept)")
+m2_tab <- tidy(m2, effects = "fixed") 
+
+## REPORT 
+report(m2)
 
 ```
 
-A linear mixed-effects model was fit to predict step duration from
-FORMAT and JAR, with a random intercept for participant (PID).
-
-The effect of FORMAT was not statistically significant, β =
-`r format_row$estimate`, SE = `r format_row$std.error`, *t* =
-`r format_row$statistic`, *p* `r format_row$p.value`.
-
-The effect of JAR was not significantly significant, β =
-`r jar_row$estimate`, SE = `r jar_row$std.error`, *t* =
-`r jar_row$statistic`, *p* `r jar_row$p.value`, indicating that steps
-performed in Jar 2 took approximately `r jar_row$estimate` seconds
-longer than those performed in Jar 1.
-
-The effect of the interaction of FORMAT and JAR was not significantly significant, β =
-`r int_row$estimate`, SE = `r int_row$std.error`, *t* =
-`r int_row$statistic`, *p* `r int_row$p.value`. 
 
 
 The participant-level variance was `r round(v$var.random, 2)` and the
