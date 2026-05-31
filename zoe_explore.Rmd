@@ -88,13 +88,17 @@ library(ggstatsplot) ## plotting w/ statistical tests
 ### import lookup tables
 ```{r import-lookups}
 
-## IMPORT COMPLEXITY
-lookup_complexity <- read_csv("data/input/complexity_score.csv", col_select = c('Step','complexity_score', 'complexity_category')) %>% 
+## IMPORT STEP COMPLEXITY
+lookup_step <- read_csv("data/input/lookup_step_complexity.csv", col_select = c('Step','complexity_score', 'complexity_category','Step_Code')) %>% 
   mutate(
-    STEP = as_factor(Step)
-  ) %>% select(-Step)
+    STEP = as_factor(Step),
+    STEP_CODE = as_factor(Step_Code),
+    COMPLEXITY = as_factor(complexity_category)
+  ) %>% select(-Step,-Step_Code, -complexity_category)
 
-
+## IMPORT ERROR CODES
+lookup_errors <- read_csv("data/input/lookup_errors.csv") %>% 
+  mutate(across(where(is.character), as.factor))
 
 ```
 
@@ -150,11 +154,8 @@ df_steps_raw <- read_csv("data/input/wip_steps.csv", col_select =
   ) |> 
   select(-JUNK, -MASTER_STEP) |> 
   left_join(
-    lookup_complexity,
+    lookup_step,
     by = "STEP"
-  ) %>% 
-  mutate(
-    complexity_category = as_factor(complexity_category)
   ) %>% 
   droplevels()
 
@@ -204,83 +205,6 @@ write.csv(df_steps_duration,"data/output/df_steps_duration.csv", row.names = FAL
 ## CLEANUP
 rm(df_steps_raw)
 ```
-
-### import error-pairs
-```{r import-error-pairs}
-
-
-# for ones without _unresolved:
-# participant eventually recovered from the error
-# duration of the EE code is the time from the start of the error to when it has been completely recovered from i.e. continuous time period of: error duration+time building while error is present+error recovery time
-
-# for ones with _unresolved:
-# participant never recovered from the error
-# duration of the EE code is the time spent making the error (dual coded with the error code itself). not super useful unless we can add [all steps that have a step number > that erroneous step number, maybe plus flipping/tapping after that error] to it via the code
-
-
-##import errors
-## maxQDA export of all retrieved segments for the query (all documents) + "error pairs" code that Zoe applied to manually keep track of error and resolutions
-df <- read_csv("data/input/qda_error_pairs.csv", col_select = 
-                      c(`Document name`,
-                         `Code`,
-                        `Beginning`,
-                        `End`
-                         ),
-                     show_col_types=FALSE) %>% 
-   rename(
-      START =  `Beginning`,
-      END = `End`
-    ) %>% 
-    separate('Document name', into = c("PID", "JAR","FORMAT"), sep = "_") %>% 
-    separate('Code', into = c("JUNKERROR","ERRORPAIR","PIDERRORPAIR","ERRORCODE"), sep = '>') %>% 
-    select(-c("JUNKERROR","ERRORPAIR","PIDERRORPAIR")) %>% 
-    mutate(
-      ERRORCODE= str_trim(ERRORCODE)
-    ) %>% 
-    separate('ERRORCODE', into = c("EE","EEPID","ERROR_TYPE","ERROR_STEP","ERROR_RESOLVED"), sep = '_') %>% 
-    mutate(
-      STEP_REPEAT = str_remove(ERROR_STEP, "[abcd]$")
-    )
-
-#     ## strip weird end stuff from times
-#     separate(END, into = c("END", "JUNK"), sep = ',') %>% 
-#     separate(START, into = c("START", "JUNK"), sep = ',')  %>% 
-#   ## FILTER OUT P11 [APP ONLY CONTROL] // P18 [BOOK ONLY CONTROL]
-#   filter(PID %nin% c("P11", "P18"))%>% 
-#   mutate(
-#     PID = as_factor(PID),
-#     JAR = as_factor(JAR),
-#     FORMAT = as_factor(FORMAT),
-#     START = hms::as_hms(START),
-#     END = hms::as_hms(END),
-#     DURATION = END-START,
-#     ERROR_GROUP = as_factor(str_trim(ERROR_GROUP)),
-#     ERROR_TYPE = as_factor(str_trim(ERROR_TYPE)),
-#     ERROR = as_factor(str_trim(ERROR))
-#   ) %>% 
-#   ## CREATE ORDER FACTOR 
-#   mutate(
-#     ORDER = case_when(
-#       (JAR == "jar1" & FORMAT == "B") |
-#       (JAR == "jar2" & FORMAT == "A") ~ "BOOK_FIRST",
-# 
-#       (JAR == "jar1" & FORMAT == "A") |
-#       (JAR == "jar2" & FORMAT == "B") ~ "APP_FIRST"),
-#   ORDER = factor(ORDER),
-#   ORDER = forcats::fct_rev(ORDER)) %>% 
-#   select(-JUNK, -BLANK)
-#   
-#     
-# ## RENAME INSTRUCTION TYPES
-# df_errors_raw$FORMAT <- fct_recode(df_errors_raw$FORMAT, 
-#                             "APP" = 'A', 
-#                             "BOOKLET" = 'B')
-
-
-```
-
-
-
 
 ### import errors
 ```{r import-errors}
@@ -375,6 +299,93 @@ write.csv(df_error_recoveries,"data/output/df_error_recoveries.csv", row.names =
 ##CLEANUP
 rm(df_errors_raw)
 ```
+
+### import error-pairs
+```{r import-error-pairs}
+
+
+# for ones without _unresolved:
+# participant eventually recovered from the error
+# duration of the EE code is the time from the start of the error to when it has been completely recovered from i.e. continuous time period of: error duration+time building while error is present+error recovery time
+
+# for ones with _unresolved:
+# participant never recovered from the error
+# duration of the EE code is the time spent making the error (dual coded with the error code itself). not super useful unless we can add [all steps that have a step number > that erroneous step number, maybe plus flipping/tapping after that error] to it via the code
+
+
+##import errors
+## maxQDA export of all retrieved segments for the query (all documents) + "error pairs" code that Zoe applied to manually keep track of error and resolutions
+df_error_pairs<- read_csv("data/input/qda_error_pairs.csv", col_select = 
+                      c(`Document name`,
+                         `Code`,
+                        `Beginning`,
+                        `End`
+                         ),
+                     show_col_types=FALSE) %>% 
+   rename(
+      START =  `Beginning`,
+      END = `End`
+    ) %>% 
+    separate('Document name', into = c("PID", "JAR","FORMAT"), sep = "_") %>% 
+    separate('Code', into = c("JUNKERROR","ERRORPAIR","PIDERRORPAIR","ERRORCODE"), sep = '>') %>% 
+    select(-c("JUNKERROR","ERRORPAIR","PIDERRORPAIR")) %>% 
+    mutate(
+      ERRORCODE= str_trim(ERRORCODE)
+    ) %>% 
+    separate('ERRORCODE', into = c("EE","EEPID","ERROR_CODE","ERROR_STEP","ERROR_RESOLVED"), sep = '_') %>% 
+    mutate(
+      STEP_CODE = str_remove(ERROR_STEP, "[abcd]$"),
+      STEP_REPEAT = str_extract(ERROR_STEP, "[abcd]$"),
+    ) %>% 
+  left_join(
+      lookup_step,   by = "STEP_CODE"
+    ) %>% 
+  ## HANDLE UNRESOLVED /RESOLVED 
+  mutate(
+        RESOLVED = ERROR_RESOLVED != "unresolved",
+        RESOLVED = replace_na(RESOLVED, TRUE),
+        RESOLVED = as_factor(RESOLVED)
+  ) %>% 
+  ## CREATE ORDER FACTOR
+  mutate(
+    ORDER = case_when(
+      (JAR == "jar1" & FORMAT == "B") |
+      (JAR == "jar2" & FORMAT == "A") ~ "BOOK_FIRST",
+
+      (JAR == "jar1" & FORMAT == "A") |
+      (JAR == "jar2" & FORMAT == "B") ~ "APP_FIRST"),
+    ORDER = factor(ORDER),
+    ORDER = forcats::fct_rev(ORDER)) %>% 
+  ## CREATE FACTORS 
+  mutate(
+    PID = as_factor(PID),
+    JAR = as_factor(JAR),
+    START = hms::as_hms(START),
+    END = hms::as_hms(END),
+    DURATION = END-START,
+    FORMAT = as_factor(FORMAT),
+    FORMAT = fct_recode(FORMAT, "APP" = 'A', "BOOKLET" = 'B')
+  ) %>% 
+  left_join(
+    lookup_errors,   by = "ERROR_CODE"
+  ) %>%
+  select(-c("EE","EEPID","ERROR_STEP","STEP_CODE", "ERROR_RESOLVED","START","END")) %>% 
+  relocate(ERROR_CODE, .after = last_col())
+
+
+## SUMMARIZE ERRORS PER PARTICIPANT-STEP
+df_errors_summary <- df_error_pairs %>% 
+  group_by(PID, JAR, FORMAT, STEP) %>% 
+  dplyr::summarise(count = n())
+
+## EXPORT DF_STEPS
+write.csv(df_error_pairs,"data/output/df_error_pairs.csv", row.names = FALSE)
+```
+
+
+
+
+
 ### import participants
 ```{r import-participants}
 
@@ -435,7 +446,7 @@ task_errors <- df_errors %>%
   group_by(PID, JAR) %>% 
   dplyr::summarize(
     errors_jar = n()
-  )
+  ) ## validated same as error-pairs df
 
 ## ADD TOTAL ERRORS TO DF_PARTICIPANTS
 df_tasks <- df_tasks %>%
@@ -446,9 +457,6 @@ df_tasks <- df_tasks %>%
   mutate(
     errors_jar = tidyr::replace_na(errors_jar, 0)
   )
-
-
-
 
 ######### SUMMARIZE DURATION BY TASK 
 ## summarize total duration by participant-jar
@@ -984,14 +992,14 @@ df <- df_steps_duration
 
 ## grouping by participant, jar, format to get duration by step
 df_by_step <- df |> 
-  group_by(PID,complexity_category,JAR,FORMAT) |> 
+  group_by(PID,COMPLEXITY,JAR,FORMAT) |> 
   summarise(
     STEP_DURATION = sum(DURATION)
  )
 
 ## DISTRIBUTION OF DURATION BY STEP
 g <- df_by_step %>% gf_histogram(~STEP_DURATION, fill=~FORMAT) +
-  facet_wrap(~complexity_category) +
+  facet_wrap(~COMPLEXITY) +
   theme_minimal() +
   labs(title = "Distribution of STEP DURATION (in seconds) by complexity")
 
@@ -1280,9 +1288,9 @@ ggplot(df, aes(x = FORMAT, y = dur, colour = FORMAT)) +
 
 ## PLOT RAW DATA   
 ## STRIP PLOT + MEAN LABEL
-ggplot(df, aes(x = complexity_category, y = dur, colour = FORMAT)) +
+ggplot(df, aes(x = COMPLEXITY, y = dur, colour = FORMAT)) +
   geom_boxplot(
-    aes(group = complexity_category),
+    aes(group = COMPLEXITY),
     width = 0.5,
     outlier.shape = NA
   ) +
@@ -1374,7 +1382,7 @@ summary(m1)
 # report(m1)
 
 ## MODEL 2 | INCLUDE Complexity
-m2 <- lmer(dur ~ complexity_category + FORMAT + JAR + (1|PID), data = df)
+m2 <- lmer(dur ~ COMPLEXITY + FORMAT + JAR + (1|PID), data = df)
 summary(m2)
 anova(m2)
 compare_performance(m1,m2, rank = TRUE)
@@ -1382,7 +1390,7 @@ report(m2)
 ## M2 is a better fit 
 
 ## MODEL 2 | Interaction Main Effects
-m3 <- lmer(dur ~ complexity_category + FORMAT * JAR + (1|PID), data = df)
+m3 <- lmer(dur ~ COMPLEXITY + FORMAT * JAR + (1|PID), data = df)
 summary(m3)
 anova(m3)
 compare_performance(m1,m2,m3, rank = TRUE)
