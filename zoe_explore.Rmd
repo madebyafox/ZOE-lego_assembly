@@ -85,9 +85,8 @@ library(broom.mixed) #tidy model tables mixed effects
 library(ggstatsplot) ## plotting w/ statistical tests
 ```
 
-### import steps
-```{r import-steps}
-
+### import lookup tables
+```{r import-lookups}
 
 ## IMPORT COMPLEXITY
 lookup_complexity <- read_csv("data/input/complexity_score.csv", col_select = c('Step','complexity_score', 'complexity_category')) %>% 
@@ -96,6 +95,12 @@ lookup_complexity <- read_csv("data/input/complexity_score.csv", col_select = c(
   ) %>% select(-Step)
 
 
+
+```
+
+
+### import steps
+```{r import-steps}
 
 ## DF_STEPS_RAW
 ## maxQDA export of all retrieved segments for the query (all documents) + (highest level step code [includes each numbered step + Step Repeat + Flipping/Tapping Through Fast])
@@ -199,6 +204,84 @@ write.csv(df_steps_duration,"data/output/df_steps_duration.csv", row.names = FAL
 ## CLEANUP
 rm(df_steps_raw)
 ```
+
+### import error-pairs
+```{r import-error-pairs}
+
+
+# for ones without _unresolved:
+# participant eventually recovered from the error
+# duration of the EE code is the time from the start of the error to when it has been completely recovered from i.e. continuous time period of: error duration+time building while error is present+error recovery time
+
+# for ones with _unresolved:
+# participant never recovered from the error
+# duration of the EE code is the time spent making the error (dual coded with the error code itself). not super useful unless we can add [all steps that have a step number > that erroneous step number, maybe plus flipping/tapping after that error] to it via the code
+
+
+##import errors
+## maxQDA export of all retrieved segments for the query (all documents) + "error pairs" code that Zoe applied to manually keep track of error and resolutions
+df <- read_csv("data/input/qda_error_pairs.csv", col_select = 
+                      c(`Document name`,
+                         `Code`,
+                        `Beginning`,
+                        `End`
+                         ),
+                     show_col_types=FALSE) %>% 
+   rename(
+      START =  `Beginning`,
+      END = `End`
+    ) %>% 
+    separate('Document name', into = c("PID", "JAR","FORMAT"), sep = "_") %>% 
+    separate('Code', into = c("JUNKERROR","ERRORPAIR","PIDERRORPAIR","ERRORCODE"), sep = '>') %>% 
+    select(-c("JUNKERROR","ERRORPAIR","PIDERRORPAIR")) %>% 
+    mutate(
+      ERRORCODE= str_trim(ERRORCODE)
+    ) %>% 
+    separate('ERRORCODE', into = c("EE","EEPID","ERROR_TYPE","ERROR_STEP","ERROR_RESOLVED"), sep = '_') %>% 
+    mutate(
+      STEP_REPEAT = str_remove(ERROR_STEP, "[abcd]$")
+    )
+
+#     ## strip weird end stuff from times
+#     separate(END, into = c("END", "JUNK"), sep = ',') %>% 
+#     separate(START, into = c("START", "JUNK"), sep = ',')  %>% 
+#   ## FILTER OUT P11 [APP ONLY CONTROL] // P18 [BOOK ONLY CONTROL]
+#   filter(PID %nin% c("P11", "P18"))%>% 
+#   mutate(
+#     PID = as_factor(PID),
+#     JAR = as_factor(JAR),
+#     FORMAT = as_factor(FORMAT),
+#     START = hms::as_hms(START),
+#     END = hms::as_hms(END),
+#     DURATION = END-START,
+#     ERROR_GROUP = as_factor(str_trim(ERROR_GROUP)),
+#     ERROR_TYPE = as_factor(str_trim(ERROR_TYPE)),
+#     ERROR = as_factor(str_trim(ERROR))
+#   ) %>% 
+#   ## CREATE ORDER FACTOR 
+#   mutate(
+#     ORDER = case_when(
+#       (JAR == "jar1" & FORMAT == "B") |
+#       (JAR == "jar2" & FORMAT == "A") ~ "BOOK_FIRST",
+# 
+#       (JAR == "jar1" & FORMAT == "A") |
+#       (JAR == "jar2" & FORMAT == "B") ~ "APP_FIRST"),
+#   ORDER = factor(ORDER),
+#   ORDER = forcats::fct_rev(ORDER)) %>% 
+#   select(-JUNK, -BLANK)
+#   
+#     
+# ## RENAME INSTRUCTION TYPES
+# df_errors_raw$FORMAT <- fct_recode(df_errors_raw$FORMAT, 
+#                             "APP" = 'A', 
+#                             "BOOKLET" = 'B')
+
+
+```
+
+
+
+
 ### import errors
 ```{r import-errors}
 
@@ -251,6 +334,7 @@ df_errors_raw <- read_csv("data/input/wip_errors.csv", col_select =
 df_errors_raw$FORMAT <- fct_recode(df_errors_raw$FORMAT, 
                             "APP" = 'A', 
                             "BOOKLET" = 'B')
+
 
 
 ## participant level total error count --> sum df_errors w/o error recovery or unresolved 

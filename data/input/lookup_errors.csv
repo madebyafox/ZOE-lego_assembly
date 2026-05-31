@@ -1,0 +1,12 @@
+"ERROR_GROUP","ERROR_TYPE","ERROR"
+"Error Types","Placement Errors","Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union"
+"Error Types","Placement Errors","Carry-forward Incorrect Placement"
+"Error Types","Placement Errors","Missed Reassembly Part"
+"Error Types","Placement Errors","Placement On Incorrect Piece(s)"
+"Error Types","Piece Selection Errors","Missed/Skipped Piece"
+"Error Types","Piece Selection Errors","Incorrect Piece"
+"Error Types","Piece Selection Errors","Unnecessary Piece"
+"Error Types","Spatial Transformation Errors","Piece Orientation Error"
+"Error Types","Spatial Transformation Errors","Model Orientation Error"
+"Error Recovery",NA,NA
+"Unresolved Upon Completion",NA,NA
