@@ -541,7 +541,6 @@ write.csv(df_participants,"data/output/df_participants.csv", row.names = FALSE)
 ```
 
 
-### TODO import error pairs
 ### TODO import step-pair 
 
 
@@ -1112,7 +1111,6 @@ df <- df_duration_by_particiapnt <- df_steps_duration |>
     DURATION = sum(DURATION)
  )
 
-
 ## GROUPED BARCHART by JAR
 df %>%
     ggplot(aes(fill=JAR))+
@@ -1236,7 +1234,7 @@ summary(a)
 
 
 
-### MODEL STEP DURATION
+### MODEL STEP DURATION — INCLUDE IN THESIS
 
 What predicts duration per step?
 
@@ -1389,7 +1387,7 @@ compare_performance(m1,m2, rank = TRUE)
 report(m2)
 ## M2 is a better fit 
 
-## MODEL 2 | Interaction Main Effects
+## MODEL 3 | Interaction Main Effects
 m3 <- lmer(dur ~ COMPLEXITY + FORMAT * JAR + (1|PID), data = df)
 summary(m3)
 anova(m3)
@@ -1397,23 +1395,31 @@ compare_performance(m1,m2,m3, rank = TRUE)
 ## interaction model is NOT a better fit
 
 
+## BUT INTERACTION MODEL REFLECTS STRUCTURE OF THE EXPERIMENT 
+
 ## PLOT MODEL ESTIMATES
 # plot_model(m1, show.values= TRUE, type = "re") # random effects
- plot_model(m2, show.values= TRUE, type = "est", title = "Model Estimate (dur ~ COMPLEXITY + FORMAT + JAR + (1|PID)")
- plot_model(m2, show.values= TRUE, type = "pred", title = "Model Estimate (dur ~ COMPLEXITY + FORMAT + JAR + (1|PID)")
+ # plot_model(m2, show.values= TRUE, type = "est", title = "Model Estimate (dur ~ COMPLEXITY + FORMAT + JAR + (1|PID)")
+ # plot_model(m2, show.values= TRUE, type = "pred", title = "Model Estimate (dur ~ COMPLEXITY + FORMAT + JAR + (1|PID)")
+
+## PLOT INTERACTION MODEL
+ plot_model(m3, show.values= TRUE, type = "est", title = "Model Estimate (dur ~ COMPLEXITY + FORMAT * JAR + (1|PID)")
+
+ plot_model(m3, show.values= TRUE, type = "int", title = "Model Estimate (dur ~ COMPLEXITY + FORMAT * JAR + (1|PID)")
+ ## TODO FID INTERACTION PLOT THAT SHOWS COMPLEXITY 
 
 ## DESCRIBE MODEL VARIANCE EXPLAINED
-v <- get_variance(m2)
+v <- get_variance(m3)
 t <- v$var.fixed + v$var.random + v$var.residual
 fixed <- v$var.fixed/t * 100
 random <- v$var.random/t * 100
 residual <- v$var.residual/t * 100
 
 ## MODEL TABLE
-m2_tab <- tidy(m2, effects = "fixed") 
+m3_tab <- tidy(m3, effects = "fixed") 
 
 ## REPORT 
-report(m2)
+report(m3)
 
 ```
 
@@ -1501,7 +1507,7 @@ df_error_counts <- error_counts %>%
 rm(error_counts_obs, valid_conditions, error_counts)
 ```
 
-### DESCRIBE Error Count
+### DESCRIBE Error Count (Participant)
 
 ```{r count-errors}
 df <- df_error_counts
@@ -1526,6 +1532,54 @@ df %>%
     labs(title = "Errors per JAR per Participant")
 
 ```
+
+
+### DESCRIBE Error Count (Step) —- VIS ERROR BY STEP
+
+## TODO RECONCILE error pair summary of errors per jar/app with error recovery
+## TODO add missing zeros to df_errors_summary 
+```{r count-errors_step}
+df <- df_error_pairs
+
+df2 <- df_errors_summary
+
+
+## GROUPED BARCHART 
+df2 %>% 
+  ggplot(aes(x=STEP, fill=FORMAT ))+
+    geom_bar(position = "dodge") +
+    facet_wrap(~JAR) + 
+    # facet_wrap(~ORDER, scales = "free_x") + 
+    # scale_fill_brewer(palette="Paired", direction =-1) +
+    theme_minimal()
+# + 
+    # labs(title = "Errors per JAR per Participant")
+
+
+## GROUPED BARCHART 
+df %>% 
+  ggplot(aes(x=COMPLEXITY, fill=FORMAT ))+
+    geom_bar(position = "dodge") +
+    facet_wrap(~JAR) + 
+    # facet_wrap(~ORDER, scales = "free_x") + 
+    # scale_fill_brewer(palette="Paired", direction =-1) +
+    theme_minimal()
+# + 
+    # labs(title = "Errors per JAR per Participant")
+
+
+
+# ## GROUPED BARCHART 
+# df %>% 
+#   ggplot(aes(x=PID, fill=FORMAT, y = n_errors))+
+#     geom_col(position = "dodge") +
+#     facet_wrap(~ORDER, scales = "free_x") + 
+#     scale_fill_brewer(palette="Set2", direction =-1) +
+#     theme_minimal() + 
+#     labs(title = "Errors per JAR per Participant")
+
+```
+
 
 ### TEST Error Count JAR
 ```{r test-error-count-JAR}
@@ -1969,20 +2023,102 @@ plot_model(m2, type = "int", title = "error recovery ~ JAR * FORMAT")
 ### DESCRIBE Jar-level 
 
 What is the relationship between a participant's speed and accuracy on the tasks?
-```{r}
+```{r, warning=FALSE}
 ## SET DATAFRAME
 df <- df_tiny_task
 
+
 ## SCATTERPLOT
-df %>% ggplot(aes(x= duration_jar, y = errors_jar, color=FORMAT)) +
+g <- df %>% ggplot(aes(x= duration_jar, y = errors_jar, color=FORMAT)) +
+  geom_jitter(alpha=0.5) + 
+  scale_color_brewer(palette="Set2", direction =-1) +
+  # geom_smooth(method = "lm", se = TRUE) + # linear regression
+  geom_smooth(
+  method = "glm",
+  method.args = list(family = poisson),
+  se = TRUE
+ ) + 
+  # facet_wrap(~JAR) + 
+  theme_minimal() +
+  labs(title = "Participant SPEED X ACCURACY")
+
+g
+ggsave(
+  filename = "figs/speed_accuracy_JAR.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
+
+
+## SCATTERPLOT
+df %>% ggplot(aes(x= errors_jar, y = duration_jar, color=FORMAT)) +
   geom_point(alpha=0.5) + 
+   # geom_smooth(method = "lm", se = TRUE) + # linear regression
+  geom_smooth(
+  method = "glm",
+  method.args = list(family = poisson),
+  se = TRUE
+ ) + 
   scale_color_brewer(palette="Set2", direction =-1) +
   facet_wrap(~JAR) + 
   theme_minimal() + 
-  labs(
-    title = "Participant SPEED X ACCURACY", x = "Jar duration (minute)", y="Errors"
-  ) 
+  labs(title = "Participant SPEED X ACCURACY")
 
+
+## SCATTERPLOT
+g <- df %>% ggplot(aes(x= duration_jar, y = errors_jar, color=FORMAT)) +
+  geom_point(alpha=0.5) + 
+  scale_color_brewer(palette="Set2", direction =-1) +
+   # geom_smooth(method = "lm", se = TRUE) + # linear regression
+  geom_smooth(
+  method = "glm",
+  method.args = list(family = poisson),
+  se = TRUE
+ ) + 
+  facet_wrap(~FORMAT) + 
+  theme_minimal() + 
+  labs(title = "Participant SPEED X ACCURACY",
+       caption="(poisson regression)") 
+  
+g
+ggsave(
+  filename = "figs/speed_accuracy_FORMAT_FACET.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
+
+## SCATTERPLOT
+g <- df %>% ggplot(aes(x= duration_jar, y = errors_jar, color=JAR)) +
+  geom_point(alpha=0.5) + 
+  scale_color_brewer(palette="Set2", direction =-1) +
+   # geom_smooth(method = "lm", se = TRUE) + # linear regression
+  geom_smooth(
+  method = "glm",
+  method.args = list(family = poisson),
+  se = TRUE
+ ) + 
+  facet_wrap(~FORMAT) + 
+  theme_minimal() + 
+  labs(title = "Participant SPEED X ACCURACY",
+       caption="(poisson regression)") 
+  
+g
+ggsave(
+  filename = "figs/speed_accuracy_JAR_FORMAT_FACET.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
 ```
 
 
@@ -1996,8 +2132,10 @@ summary(m1)
 report(m1)
 
 plot_model(m1, type="est", show.values = TRUE, show.p = TRUE, title = "duration_jar ~ errors + FORMAT + JAR + (1|PID)")
-# plot_model(m1, type = "pred")
+plot_model(m1, type = "pred")
 ```
+
+## TODO JAR-LEVEL TABLE
 ## WIP
 
 
