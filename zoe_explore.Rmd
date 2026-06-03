@@ -1133,7 +1133,7 @@ df %>%
        subtitle = "(includes step repeats)")
 ```
 
-### TEST (jar-level) JAR
+### TEST (jar-level) JAR -- the one with the plots
 
 Is there a significant difference in duration of steps PER JAR? 
 ```{r TEST-step-duration-jar}
@@ -1154,14 +1154,47 @@ grouped_ggwithinstats(data = df,
               ggtheme = ggplot2::theme_minimal())
 
 ## GGPLOT LINE GRAPH WITHIN SUBJECTS
-df %>%
-  ggplot(aes(JAR, time, group = PID, color=JAR)) +
-  geom_line(alpha = .3) +
-  scale_color_brewer(palette="Paired", direction =-1) +
+g <- df %>%
+  ggplot(aes(JAR, time, group = PID, color=FORMAT)) +
+  geom_line(alpha = .3, color = "black") +
+  # scale_color_brewer(palette="Paired", direction =-1) +
+    scale_color_brewer(palette="Set2", direction =-1) +
+
   geom_point() +
   facet_wrap(~ORDER) +
   theme_minimal() + 
   labs(title = "Step DURATION by JAR and ORDER")
+
+g 
+ggsave(
+  filename = "figs/linegraph_duration_jar.svg",
+  plot = g,
+  device = svglite,
+  width = 8,
+  height = 6,
+  units = "in"
+)
+
+
+## GGPLOT LINE GRAPH WITHIN SUBJECTS
+g <- df %>%
+  ggplot(aes(JAR, time, group = PID, color=PID)) +
+  geom_line(alpha = .3, color = "black") +
+  geom_point() +
+  facet_wrap(~ORDER) +
+  theme_minimal() + 
+  labs(title = "Step DURATION by JAR and ORDER")
+
+g 
+ggsave(
+  filename = "figs/linegraph_duration_PID.svg",
+  plot = g,
+  device = svglite,
+  width = 8,
+  height = 6,
+  units = "in"
+)
+
 
 ## ANOVA
 a <- aov_ez(
