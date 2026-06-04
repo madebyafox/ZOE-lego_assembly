@@ -1473,6 +1473,10 @@ remained unexplained.*
 
 
 
+
+
+
+
 ## ERROR COUNT
 ### SETUP Error Count
 
@@ -2167,6 +2171,37 @@ report(m1)
 plot_model(m1, type="est", show.values = TRUE, show.p = TRUE, title = "duration_jar ~ errors + FORMAT + JAR + (1|PID)")
 plot_model(m1, type = "pred")
 ```
+
+
+
+## WIP JOIN STEP DURATION - ERRORS
+```{r join-step-duration-error}
+
+df_joined_steps <- df_steps_duration   %>%
+  left_join(
+    df_errors_summary %>%
+      select(PID, JAR, FORMAT, STEP, count),
+    by = c("PID", "JAR", "FORMAT", "STEP")
+  ) %>%
+  mutate(ERROR_COUNT = coalesce(count, 0)) |> select(-count) |> 
+  filter(STEP %nin% c("Flipping/Tapping Through Fast", "Step 0A", "Step 0B")) 
+  
+
+df <- df_joined_steps
+
+df |> ggplot(aes(x= DURATION, y=ERROR_COUNT, color=COMPLEXITY)) + 
+  geom_jitter(alpha = 0.25) + 
+  facet_grid(FORMAT ~ JAR) + 
+  geom_smooth(
+    method = "glm",
+    method.args = list(family = poisson),
+    se = TRUE
+  ) + 
+  theme_minimal()
+
+```
+
+
 
 ## TODO JAR-LEVEL TABLE
 ## WIP
