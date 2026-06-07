@@ -593,6 +593,7 @@ Structure of this mixed design is as follows:
 
 ### DURATION (jar level)
 
+#### visualization
 ```{r poster-duration-jar}
 ## SET DATAFRAME
 df <- df_tasks
@@ -627,7 +628,11 @@ gtsave(
   t,
   filename = "figs/poster/duration_table.png"
 )
+```
 
+#### model
+
+```{r poster_jar_duration_model}
 
 ## LINEAR MIXED EFFECTS MODEL 
 m_jar_duration <- lmer(duration_jar ~ FORMAT + JAR + ORDER + (1 | PID), data = df)
@@ -681,6 +686,130 @@ remained unexplained.*
 PID: (Intercept) = 	Between-participant variability in overall jar duration
 Residual = 	Within-participant / observation-level variability not explained by the model
 ICC	= Proportion of remaining variance attributable to participant differences
+
+
+
+
+
+
+
+
+
+
+
+### ERROR RECOVERY (jar level)
+
+#### visualization
+
+```{r count-recoveries}
+df <- df_error_recoveries
+
+## GROUPED BARCHART []
+g <- df %>% 
+  ggplot(aes(x=JAR, fill=RECOVERY))+
+    geom_bar() + 
+  scale_fill_brewer(palette="Paired", direction =1) +
+  facet_wrap(~ORDER) + 
+  theme_minimal() + 
+  labs(title = "Errors RECOVERY by JAR & ORDER")
+
+g 
+ggsave(
+  filename = "figs/poster/plot_errors_recovery.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
+
+## SUMMARY TABLE
+ds <- df %>% 
+  group_by(JAR, FORMAT, RECOVERY) %>%
+  summarise(
+    n_errors = n(),
+    .groups = "drop"
+  )
+
+## PRINT TABLE
+(t <- ds %>% gt() %>% tab_header("JAR ERROR RECOVERY table"))
+
+
+gtsave(
+  t,
+  filename = "figs/poster/error_recovery_table.png"
+)
+```
+
+####model
+
+```{r MODEL_errors-recovery}
+
+## one row per error
+df <- df_error_recoveries |> 
+  droplevels() |> 
+   mutate(RECOVERY = fct_rev(RECOVERY))
+
+m1 <- glmer(
+  RECOVERY ~ FORMAT + JAR + (1 | PID),
+  data = df,
+  family = binomial(link = "logit")
+)
+
+m2 <- glmer(
+  RECOVERY ~ FORMAT + JAR + ORDER + (1 | PID),
+  data = df,
+  family = binomial(link = "logit")
+)
+
+## note interaction model not appropriate given design
+
+# report(m1)
+report(m2)
+
+## MODEL TABLE
+tab_model(m2,
+  show.se = TRUE,
+  show.stat = TRUE,
+  show.df = TRUE,
+  show.re.var = TRUE,
+  title = paste("Model:", deparse(formula(m2))),
+  file = "figs/poster/model_error_recovery_table.html"
+) 
+
+## DESCRIBE MODEL VARIANCE EXPLAINED
+v <- get_variance(m2)
+t <- v$var.fixed + v$var.random + v$var.residual
+fixed <- v$var.fixed/t * 100
+random <- v$var.random/t * 100
+residual <- v$var.residual/t * 100
+
+
+
+```
+**MODEL INTERPRETATION**
+We fit a logistic mixed effects model predicting error recovery by FORMAT, JAR and ORDER with PARTICIPANT as a random intercept. The model explained 57% variance in error recovery status (R2conditional), with 22% explained by fixed effects, and 35% explained by participant individual differences, and 42% left unexplained. Recovery was more likely in the app condition than the booklet condition, Recovery was somewhat lower for Jar 2 than Jar 1, though neither effect was statistically significant.
+
+**VARIANCE INTERPRETATION**
+The participant-level variance was `r round(v$var.random, 2)` and the
+residual variance was `r round(v$var.residual, 2)`.
+
+*Fixed effects accounted for approximately
+`r round(100 * v$var.fixed / (v$var.fixed + v$var.random + v$var.residual), 1)`%
+of the total variance, participant-level differences accounted for
+`r round(100 * v$var.random / (v$var.fixed + v$var.random + v$var.residual), 1)`%,
+and
+`r round(100 * v$var.residual / (v$var.fixed + v$var.random + v$var.residual), 1)`%
+remained unexplained.*
+
+
+PID: (Intercept) = 	Between-participant variability in overall jar duration
+Residual = 	Within-participant / observation-level variability not explained by the model
+ICC	= Proportion of remaining variance attributable to participant differences
+
+
+
 
 
 
@@ -2548,73 +2677,6 @@ An overdispersion diagnostic found no evidence that the Poisson assumption was v
 # in baseline error rates.
 # 
 # Variance decomposition indicated that fixed effects accounted for approximately `r round(fixed_pct,2)`% of the total variance, participant-level variability accounted for `r  format(random_pct, scientific=FALSE)`%, and `r round(resid_pct,2)`% remained unexplained.
-```
-
-
-
-
-
-### ERROR RECOVERY
-
-#### DESCRIBE Error Recovery
-
-```{r count-recoveries}
-df <- df_error_recoveries
-
-## GROUPED BARCHART []
-g <- df %>% 
-  ggplot(aes(x=FORMAT, fill=RECOVERY))+
-    geom_bar() + 
-  scale_fill_brewer(palette="Paired", direction =1) +
-  facet_wrap(~JAR) + 
-  theme_minimal() + 
-  labs(title = "Errors RECOVERY by FORMAT")
-
-g 
-ggsave(
-  filename = "figs/errors_recovery.svg",
-  plot = g,
-  device = svglite,
-  width = 6,
-  height = 4,
-  units = "in"
-)
-
-```
-#### MODEL Error Recovery
-
-```{r errors-recovery}
-
-## one row per error
-df <- df_error_recoveries |> 
-  droplevels() |> 
-   mutate(RECOVERY = fct_rev(RECOVERY))
-
-m1 <- glmer(
-  RECOVERY ~ FORMAT + JAR + (1 | PID),
-  data = df,
-  family = binomial(link = "logit")
-)
-# summary(m1)
-
-m2 <- glmer(
-  RECOVERY ~ FORMAT * JAR + (1 | PID),
-  data = df,
-  family = binomial(link = "logit")
-)
-summary(m2)
-
-# compare_performance(m1,m2, rank = TRUE)
-
-
-# report(m1)
-report(m2)
-
-
-plot_model(m2, type = "est", title = "error recovery ~ JAR * FORMAT", show.value = TRUE, show.p=TRUE)
-plot_model(m2, type = "int", title = "error recovery ~ JAR * FORMAT")
-
-
 ```
 
 
