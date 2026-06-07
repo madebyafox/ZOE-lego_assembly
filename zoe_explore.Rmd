@@ -25,6 +25,9 @@ editor_options:
 ---
 ## OPEN QUESTIONS
 
+
+
+
 ### STEP COMPLEXITY
 - X complexity score import 
 - X complexity score join to step duration
@@ -38,10 +41,11 @@ mean step 0 time
 step 0 team 
 
 ### ERROR-PAIRS
-- time——accuracy -- import error pairs 
+- X time——accuracy -- import error pairs 
 - Do ppl who have fewer step repeats have more errors? (visualization
     of ERRORS X STEP frequency by person)
 ### STEP-PAIRS 
+- import step-pairs
 - strategy X errors
 
 ### SPEED/ACCURACY
@@ -71,18 +75,24 @@ library(svglite) #saving ggplots as svgs
 library(kableExtra) #table formatting
 library(tidyr) #tidy data wrangling
 
+## VIS
+library(ggh4x) # nested facets
+library(ggdist) #distributional viz
+library(ggpubr) #rremove()
+
 ## modelling
 library(afex) #anova
 library(lme4) #regression models
 library(lmerTest) #regression models
 library(sjPlot) #model plots
-library(ggdist) #distributional viz
+library(parameters) # get model parameters ez
 library(performance) #easyStats compare models
 library(report) # ez reporting
 library(insight) #ez model info 
 library(glmmTMB) #negative binomial glm model 
 library(broom.mixed) #tidy model tables mixed effects
 library(ggstatsplot) ## plotting w/ statistical tests
+library(emmeans) ## estimated marginal means
 ```
 
 ### import lookup tables
@@ -123,8 +133,8 @@ df_steps_raw <- read_csv("data/input/wip_steps.csv", col_select =
     separate('Document name', into = c("PID", "JAR","FORMAT"), sep = "_") %>% 
     separate('Code', into = c("MASTER_STEP", "STEP"), sep = '>') %>% 
     ## strip weird end stuff from times
-    separate(END, into = c("END", "JUNK"), sep = ',') %>% 
-    separate(START, into = c("START", "JUNK"), sep = ',') %>% 
+    # separate(END, into = c("END", "JUNK"), sep = ',') %>% 
+    # separate(START, into = c("START", "JUNK"), sep = ',') %>% 
   mutate(
     PID = as_factor(PID),
     JAR = as_factor(JAR),
@@ -132,9 +142,11 @@ df_steps_raw <- read_csv("data/input/wip_steps.csv", col_select =
     # ERROR_GROUP = as_factor(str_trim(ERROR_GROUP)),
     STEP = as_factor(str_trim(STEP)),
     # MASTER_STEP = as_factor(MASTER_STEP),
+    START = gsub(",", ".", START),
     START = hms::as_hms(START),
+    END   = gsub(",", ".", END),
     END = hms::as_hms(END),
-    DURATION = END-START
+    DURATION = as.numeric(END-START, units = "secs")
   ) |> 
 ## CREATE ORDER FACTOR 
   mutate(
@@ -152,7 +164,7 @@ df_steps_raw <- read_csv("data/input/wip_steps.csv", col_select =
   mutate(
     STEP = fct_relevel(STEP, "Step 0A","Step 0B")
   ) |> 
-  select(-JUNK, -MASTER_STEP) |> 
+  select(-MASTER_STEP) |> 
   left_join(
     lookup_step,
     by = "STEP"
@@ -226,17 +238,19 @@ df_errors_raw <- read_csv("data/input/wip_errors.csv", col_select =
     separate('Document name', into = c("PID", "JAR","FORMAT"), sep = "_") %>% 
     separate('Code', into = c("BLANK","ERROR_GROUP", "ERROR_TYPE","ERROR"), sep = '>') %>% 
     ## strip weird end stuff from times
-    separate(END, into = c("END", "JUNK"), sep = ',') %>% 
-    separate(START, into = c("START", "JUNK"), sep = ',')  %>% 
+    # separate(END, into = c("END", "JUNK"), sep = ',') %>% 
+    # separate(START, into = c("START", "JUNK"), sep = ',')  %>% 
   ## FILTER OUT P11 [APP ONLY CONTROL] // P18 [BOOK ONLY CONTROL]
   filter(PID %nin% c("P11", "P18"))%>% 
   mutate(
     PID = as_factor(PID),
     JAR = as_factor(JAR),
     FORMAT = as_factor(FORMAT),
+    START = gsub(",", ".", START),
     START = hms::as_hms(START),
+    END   = gsub(",", ".", END),
     END = hms::as_hms(END),
-    DURATION = END-START,
+    DURATION = as.numeric(END-START, units = "secs"),
     ERROR_GROUP = as_factor(str_trim(ERROR_GROUP)),
     ERROR_TYPE = as_factor(str_trim(ERROR_TYPE)),
     ERROR = as_factor(str_trim(ERROR))
@@ -251,7 +265,7 @@ df_errors_raw <- read_csv("data/input/wip_errors.csv", col_select =
       (JAR == "jar2" & FORMAT == "B") ~ "APP_FIRST"),
   ORDER = factor(ORDER),
   ORDER = forcats::fct_rev(ORDER)) %>% 
-  select(-JUNK, -BLANK)
+  select(-BLANK)
   
     
 ## RENAME INSTRUCTION TYPES
@@ -360,9 +374,11 @@ df_error_pairs<- read_csv("data/input/qda_error_pairs.csv", col_select =
   mutate(
     PID = as_factor(PID),
     JAR = as_factor(JAR),
+    START = gsub(",", ".", START),
     START = hms::as_hms(START),
+    END = gsub(",", ".", END),
     END = hms::as_hms(END),
-    DURATION = END-START,
+    DURATION = as.numeric(END-START, units = "secs"),
     FORMAT = as_factor(FORMAT),
     FORMAT = fct_recode(FORMAT, "APP" = 'A', "BOOKLET" = 'B')
   ) %>% 
@@ -420,7 +436,7 @@ rm(df_participants_raw)
 ```{r wrangle-tasks}
 
 ## CREATE lookup table
-task_lookup <- df_steps_count %>%
+lookup_tasks <- df_steps_count %>%
   distinct(PID, JAR, FORMAT, ORDER)
 
 
@@ -431,7 +447,7 @@ df_tasks <- df_participants %>%
     JAR = c("jar1", "jar2")
   ) %>% 
   left_join(
-    task_lookup,
+    lookup_tasks,
     by = c("PID", "JAR")
   ) %>% 
   mutate(
@@ -540,15 +556,495 @@ write.csv(df_participants,"data/output/df_participants.csv", row.names = FALSE)
 
 ```
 
+### wrangle steps-errors
+```{r}
+df_joined_steps_errors <- df_steps_duration   %>%
+  left_join(
+    df_errors_summary %>%
+      select(PID, JAR, FORMAT, STEP, count),
+    by = c("PID", "JAR", "FORMAT", "STEP")
+  ) %>%
+  mutate(ERROR_COUNT = coalesce(count, 0)) |> select(-count) |> 
+  filter(STEP %nin% c("Flipping/Tapping Through Fast", "Step 0A", "Step 0B")) %>% 
+  droplevels()
+  
 
-### TODO import step-pair 
+```
+
+
+
+## DESIGN
+
+In this study, 16 participants completed two lego assembly JARs (jar1, jar2). Each participant completed jar1 first, followed by jar2. This JAR-ORDER could not be counterbalanced, because of the nature of lego assembly.  While completing each JAR each participant had a set of instructions with a particular FORMAT (book, app).  Half of the participants completed jar 1 with the book followed by jar 2 with the app, and the other half did the reverse. In this way, ORDER of format was counterbalanced.  For each participant, we recorded the JAR_DURATION as well as JAR_ERRROR (count).  We broke each task into a series of STEPS (i.e. Step 1, Step 2, Step 3, etc.). Steps 1-29 were the steps that made up jar1 and Steps 30 - 58 were in jar2.  We also have the DURATION and ERROR_COUNT for each step.  For each ERROR we know whether the error was resolved (true/false) and an ERROR_TYPE.   In general, we are interested in the potential effect of FORMAT on task performance.  
+
+Structure of this mixed design is as follows: 
+- participants are a random effect, crossed with JAR and FORMAT 
+- FORMAT is within-subject
+- JAR is within-subject
+- ORDER is between-subjects  (format-order)
+- STEP is nested within JAR
+
+
+
+## EXPLORATORY VIS
+
+##### tile plot of Participant-Step time
+```{r}
+## TILE PLOT
+df <- df_joined_steps_errors
+
+## TILE PLOT
+df %>%
+ggplot(aes(x = factor(STEP), y = factor(PID), fill = DURATION)) +
+  geom_tile(color = "white") +
+  labs(
+    x = "Step",
+    y = "Participant",
+    fill = "Step duration",
+    title = "Raw step durations by participant and step"
+  ) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, size = 7)
+  )
+
+
+
+```
+
+
+#####Highly variant steps
+steps that show variance between formats
+Step 5, 
+```{r}
+
+## SET DATAFRAME
+df <- df_joined_steps_errors
+
+ds <- df %>% 
+  group_by(STEP, FORMAT) %>% 
+  summarise(
+    duration_mean = mean(DURATION), 
+    duration_med = median(DURATION),
+    duration_sd = sd(DURATION),
+    errors_mean = mean(ERROR_COUNT),
+    errors_sd = sd(ERROR_COUNT)
+  )
+
+diff <- ds %>% group_by(STEP) %>% 
+  summarise(
+    mean_diff = max(duration_mean) - min(duration_mean),
+    sd_diff = max(duration_sd) - min(duration_sd),
+    med_diff = max(duration_med) - min(duration_med)
+    
+  )
+
+diff %>% arrange(med_diff) 
+
+
+variant_steps <- diff %>% filter(med_diff > 5) %>% select(STEP) 
+
+## SET DATAFRAME
+df <- df_joined_steps_errors %>% filter (STEP %in% variant_steps$STEP) %>% 
+  mutate(
+    STEP_NUM = as.factor(stringr::str_remove(STEP, "^Step\\s+"))
+  ) 
+
+## STRIP PLOT
+df %>% 
+  ggplot(aes(x = FORMAT, y = DURATION, color=FORMAT)) +
+  geom_jitter(width = 0.12, alpha = 0.25) +
+  scale_color_brewer(palette="Set2", direction =-1) +
+  geom_boxplot(width=-.25,  fill = NA)+
+   # DISPLAY MEAN AS POINT
+  stat_summary(
+    fun = median,
+    geom = "point",
+    shape = 18,
+    size = 3,
+    # colour = "grey"
+  ) +
+  # MEAN LABEL
+  stat_summary(
+    fun = median,
+    geom = "text",
+    aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
+    vjust = -0.8,
+    colour = "black",
+    size = 3
+  ) +
+  facet_nested(~COMPLEXITY + STEP_NUM)  + 
+  labs( title = "HIGHLY VARIANT STEPS", caption= "<> is median") +
+  theme_classic() + rremove("x.text")
+
+
+
+```
+
+
+## JAR-LEVEL ANALYSIS 
+
+At the JAR level, each participant contributes two rows, to the df_tasks dataframe. 
+- PID is a random effect
+- FORMAT is within-subject
+- JAR is within subject (confounded with ORDER)
+- ORDER is between subjects
+
+### JAR DURATION 
+Are jar durations different for book versus app instructions, adjusting for JAR and ORDER, while accounting for participant-level speed differences?
+
+**TLDR** : significant main effect of JAR; r2 conditional = 59% r2 marginal = 11%
+#### DESCRIBE JAR Duration
+```{r}
+## SET DATAFRAME
+df <- df_tasks
+
+## HISTOGRAM
+# df %>% ggplot(aes(x=duration_jar)) + 
+#   geom_histogram(bins=10) + 
+#   theme_minimal()
+
+## GGDIST DISTRIBITION
+df %>% ggplot(aes(x = duration_jar, y = FORMAT, fill=JAR)) + 
+  stat_dotsinterval(
+    dotsize = 0.25, overflow = "compress"
+  ) +
+  facet_grid(JAR~., scales="fixed") + 
+  labs (title = "Distribution of Jar Duration") + 
+  theme_minimal() + guides(fill = "none")
+
+
+## WITHIN-SUBJECTS LINEPLOT
+df %>% 
+  ggplot(aes(JAR, duration_jar, group = PID, color=FORMAT)) +
+    geom_line(alpha = .3, color = "black") +
+    scale_color_brewer(palette="Set2", direction =-1) +
+  geom_point() +
+  facet_wrap(~ORDER) +
+  theme_minimal() + 
+  labs(title = "Jar Duration by JAR and FORMAT")
+```
+
+#### MODEL JAR Duration
+
+##### MODEL
+```{r model-jar-duration}
+
+## SET DATAFRAME
+df <- df_tasks
+
+## MODEL
+m1 <- lmer(duration_jar ~ FORMAT + JAR + ORDER + (1 | PID), data = df)
+
+## DIAGNOSTICS
+# plot(m1)
+# qqnorm(resid(m1))
+# hist(resid(m1))
+
+## INTERPRET MODEL
+model_parameters(m1)
+performance(m1)
+report(m1)
+```
+
+##### VIS
+```{r model-jar-duration-vis}
+
+## ESTIMATED MARGINAL MEANS
+# emmeans(m1, ~ FORMAT)
+# emmeans(m1, ~ JAR)
+
+
+## PLOT MODEL ESTIMATES 
+plot_model(m1, type = "est", show.values = TRUE, show.p=TRUE) +
+  labs( title = "Model Estimates",
+    subtitle = "duration ~ FORMAT + JAR + ORDER + (1|PID)") + 
+  theme_minimal()
+
+
+## PLOT ESTIMATED MARGINAL MEANS
+plot_model(m1, type = "emm", 
+           terms = c("JAR","FORMAT")) + 
+  labs(
+    subtitle = "duration ~ FORMAT + JAR + ORDER + (1|PID)",
+    caption = "(estimated marginal means)") + theme_minimal()
+```
+
+##### TABLE
+
+```{r model-jar-duration-table}
+
+## MODEL TABLE
+tab_model(m1,
+  show.se = TRUE,
+  show.stat = TRUE,
+  show.df = TRUE,
+  show.re.var = TRUE
+)
+
+## DESCRIBE MODEL VARIANCE EXPLAINED
+v <- get_variance(m1)
+t <- v$var.fixed + v$var.random + v$var.residual
+fixed <- v$var.fixed/t * 100
+random <- v$var.random/t * 100
+residual <- v$var.residual/t * 100
+
+```
+
+
+
+The participant-level variance was `r round(v$var.random, 2)` and the
+residual variance was `r round(v$var.residual, 2)`.
+
+*Fixed effects accounted for approximately
+`r round(100 * v$var.fixed / (v$var.fixed + v$var.random + v$var.residual), 1)`%
+of the total variance, participant-level differences accounted for
+`r round(100 * v$var.random / (v$var.fixed + v$var.random + v$var.residual), 1)`%,
+and
+`r round(100 * v$var.residual / (v$var.fixed + v$var.random + v$var.residual), 1)`%
+remained unexplained.*
+
+
+PID: (Intercept) = 	Between-participant variability in overall jar duration
+Residual = 	Within-participant / observation-level variability not explained by the model
+ICC	= Proportion of remaining variance attributable to participant differences
+
+
+## STEP-LEVEL ANALYSIS 
+At the STEP level, each participant contributes 2 x (number of steps in a jar) data points; analysis with the `df_joined_steps_errors` dataframe. 
+- PID is a random effect 
+- STEP is nested within JAR
+
+
+### STEP DURATION <-- USE THIS
+
+Are step durations different for book versus app instructions, adjusting for JAR and ORDER, while accounting for participant-level speed differences and step-level difficulty differences? (Note that setup and flipping/tapping steps are excluded)
+
+#### DESCRIBE STEP Duration
+```{r}
+## SET DATAFRAME
+df <- df_joined_steps_errors
+
+## HISTOGRAM
+# df %>% ggplot(aes(x=DURATION)) +
+#   geom_histogram() +
+#   theme_minimal()
+
+## GGDIST DISTRIBITION
+df %>% ggplot(aes(x = DURATION, y = FORMAT, fill=JAR)) + 
+  stat_dotsinterval(
+    dotsize = 0.5, overflow = "compress"
+  ) +
+  facet_grid(JAR~., scales="fixed") + 
+  labs (title = "Distribution of Step Duration") + 
+  theme_minimal() + guides(fill = "none")
+
+
+## STRIP PLOT
+(g <- df %>% 
+  ggplot(aes(x = JAR, y = DURATION, color=FORMAT)) +
+  geom_jitter(width = 0.12, alpha = 0.25) +
+  scale_color_brewer(palette="Set2", direction =-1) +
+  geom_boxplot(width=-.25,  fill = NA)+
+   # DISPLAY MEAN AS POINT
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 18,
+    size = 3,
+    colour = "black"
+  ) +
+  # MEAN LABEL
+  stat_summary(
+    fun = mean,
+    geom = "text",
+    aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
+    vjust = -0.8,
+    colour = "black",
+    size = 3
+  ) +
+  facet_grid(~ORDER) + 
+  labs( title = "Step Duration by JAR and FORMAT") +
+  theme_minimal()
+)
+
+ggsave(
+  filename = "figs/raw/step_duration_by_format.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
+
+## STRIP PLOT
+(g <- df %>% 
+  ggplot(aes(x = FORMAT, y = DURATION, color=FORMAT)) +
+  geom_jitter(width = 0.12, alpha = 0.25) +
+  scale_color_brewer(palette="Set2", direction =-1) +
+  geom_boxplot(width=-.25,  fill = NA)+
+   # DISPLAY MEAN AS POINT
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 18,
+    size = 3,
+    colour = "black"
+  ) +
+  # MEAN LABEL
+  stat_summary(
+    fun = mean,
+    geom = "text",
+    aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
+    vjust = -0.8,
+    colour = "black",
+    size = 3
+  ) +
+  facet_wrap(~STEP) + 
+  labs( title = "Step Duration by STEP and FORMAT") +
+  theme_minimal()
+)
+ggsave(
+  filename = "figs/raw/step_duration_by_step.svg",
+  plot = g,
+  device = svglite,
+  width = 24,
+  height = 24,
+  units = "in"
+)
+
+```
 
 
 
 
-## STEP COUNT
 
-### DESCRIBE participant-level
+
+#### MODEL STEP Duration
+
+##### MODEL
+```{r model-STEP-duration}
+
+## SET DATAFRAME
+df <- df_joined_steps_errors
+
+## MODEL
+m1 <- lmer(DURATION ~ FORMAT + JAR + ORDER + (1 | PID) + (1|STEP), data = df)
+
+## DIAGNOSTICS
+# plot(m1)
+# qqnorm(resid(m1))
+hist(resid(m1))
+
+
+## INTERPRET MODEL
+model_parameters(m1)
+performance(m1)
+report(m1)
+
+```
+
+##### VIS
+```{r model-STEP-duration-vis}
+
+## ESTIMATED MARGINAL MEANS
+# emmeans(m1, ~ FORMAT)
+# emmeans(m1, ~ JAR)
+
+
+## PLOT MODEL ESTIMATES 
+plot_model(m1, type = "est", show.values = TRUE, show.p=TRUE) +
+  labs( title = "Model Estimates",
+    subtitle = "duration ~ FORMAT + JAR + ORDER + (1|PID)") + 
+  theme_minimal()
+
+
+## PLOT ESTIMATED MARGINAL MEANS
+plot_model(m1, type = "emm", 
+           terms = c("JAR","FORMAT")) + 
+  labs(
+    subtitle = "duration ~ FORMAT + JAR + ORDER + (1|PID)",
+    caption = "(estimated marginal means)") + theme_minimal()
+
+
+## PLOT RANDOM EFFECTS
+plot_model(m1, type = "re") 
+
+```
+
+##### TABLE
+
+```{r model-STEP-duration-table}
+
+## MODEL TABLE
+tab_model(m1,
+  show.se = TRUE,
+  show.stat = TRUE,
+  show.df = TRUE,
+  show.re.var = TRUE
+)
+
+## DESCRIBE MODEL VARIANCE EXPLAINED
+v <- get_variance(m1)
+
+# Random-intercept variance components by grouping factor
+re_var <- as.data.frame(VarCorr(m1)) %>%
+  filter(is.na(var2)) %>%
+  select(group = grp, variance = vcov)
+
+pid_var <- re_var %>%
+  filter(group == "PID") %>%
+  pull(variance)
+
+step_var <- re_var %>%
+  filter(group == "STEP") %>%
+  pull(variance)
+
+fixed_var <- v$var.fixed
+residual_var <- v$var.residual
+
+total_var <- fixed_var + pid_var + step_var + residual_var
+
+fixed_pct <- 100 * fixed_var / total_var
+pid_pct <- 100 * pid_var / total_var
+step_pct <- 100 * step_var / total_var
+residual_pct <- 100 * residual_var / total_var
+
+```
+
+The participant-level variance was `r round(pid_var, 2)`, the step-level
+variance was `r round(step_var, 2)`, and the residual variance was
+`r round(residual_var, 2)`.
+
+*Fixed effects accounted for approximately `r round(fixed_pct, 1)`% of the
+total variance, participant-level differences accounted for
+`r round(pid_pct, 1)`%, step-level differences accounted for
+`r round(step_pct, 1)`%, and `r round(residual_pct, 1)`% remained unexplained.*
+
+
+
+PID: (Intercept) = 	Between-participant variability in overall jar duration
+Residual = 	Within-participant / observation-level variability not explained by the model
+ICC	= Proportion of remaining variance attributable to participant differences
+
+
+
+
+
+
+
+
+
+
+## HIGHLIGHTS
+
+
+## STEPS
+
+### STEP COUNT
+
+#### DESCRIBE participant-level
 ```{r steps_count_participant}
 
 ## SET DATAFRAME
@@ -609,7 +1105,7 @@ ggsave(
 
 ```
 
-### DESCRIBE jar-level
+#### DESCRIBE jar-level
 ```{r steps_count_jar}
 
 ## SET DATAFRAME
@@ -648,7 +1144,7 @@ df %>%
 
 ```
 
-### TEST (jar-level) JAR
+#### TEST (jar-level) JAR
 
 Is there a significant difference in number of steps PER JAR? 
 ```{r TEST-step-count-jar}
@@ -693,7 +1189,7 @@ summary(a)
 
 
 
-### TEST (jar-level) FORMAT
+#### TEST (jar-level) FORMAT
 
 Is there a significant difference in number of steps PER FORMAT? 
 ```{r TEST-step-count-FORMAT}
@@ -740,7 +1236,7 @@ summary(a)
 
 
 
-### MODEL (participant level) STEP COUNT
+#### MODEL (participant level) STEP COUNT
 
 What predicts number of steps per participant on each task?
 
@@ -916,9 +1412,11 @@ remained unexplained.*
 
 
 
-## STEP DURATION
 
-### DESCRIBE step distribution (all)
+
+### STEP DURATION
+
+#### DESCRIBE step distribution (all)
 
 ```{r duration-steps, warning=FALSE}
 
@@ -950,7 +1448,7 @@ ggsave(
 
 ```
 
-### DESCRIBE step distribution (by step)
+#### DESCRIBE step distribution (by step)
 ```{r duration-step-level, warning=FALSE}
 
 ## SET DATAFRAME
@@ -983,7 +1481,7 @@ ggsave(
 
 
 
-### DESCRIBE step distribution (by complexity category)
+#### DESCRIBE step distribution (by complexity category)
 ```{r duration-step-complexity-category, warning=FALSE}
 
 ## SET DATAFRAME
@@ -1013,7 +1511,7 @@ ggsave(
 )
 
 ```
-### DESCRIBE step distribution (by complexity score)
+#### DESCRIBE step distribution (by complexity score)
 ```{r duration-step-complexity-score, warning=FALSE}
 
 ## SET DATAFRAME
@@ -1043,7 +1541,7 @@ ggsave(
 )
 
 ```
-### DESCRIBE participant-level
+#### DESCRIBE participant-level
 
 ```{r steps_duration_participant}
 
@@ -1100,7 +1598,7 @@ ggsave(
 )
 ```
 
-### DESCRIBE jar-level
+#### DESCRIBE jar-level
 ```{r steps_duration_jar, warning=FALSE}
 
 
@@ -1133,7 +1631,7 @@ df %>%
        subtitle = "(includes step repeats)")
 ```
 
-### TEST (jar-level) JAR -- the one with the plots
+#### TEST (jar-level) JAR -- the one with the plots
 
 Is there a significant difference in duration of steps PER JAR? 
 ```{r TEST-step-duration-jar}
@@ -1211,7 +1709,7 @@ summary(a)
 
 
 
-### TEST (jar-level) FORMAT
+#### TEST (jar-level) FORMAT
 Is there a significant difference in duration of steps PER FORMAT? 
 ```{r TEST-step-duration-FORMAT}
 
@@ -1267,7 +1765,7 @@ summary(a)
 
 
 
-### MODEL STEP DURATION — INCLUDE IN THESIS
+#### MODEL STEP DURATION — INCLUDE IN THESIS
 
 What predicts duration per step?
 
@@ -1477,8 +1975,12 @@ remained unexplained.*
 
 
 
-## ERROR COUNT
-### SETUP Error Count
+
+
+## ERRORS
+
+### ERROR COUNT
+#### SETUP Error Count
 
 ```{r setup-error-counts}
 
@@ -1544,7 +2046,7 @@ df_error_counts <- error_counts %>%
 rm(error_counts_obs, valid_conditions, error_counts)
 ```
 
-### DESCRIBE Error Count (Participant)
+#### DESCRIBE Error Count (Participant)
 
 ```{r count-errors}
 df <- df_error_counts
@@ -1571,10 +2073,18 @@ df %>%
 ```
 
 
-### DESCRIBE Error Count (Step) —- VIS ERROR BY STEP
+#### DESCRIBE Error Count (Step) —- VIS ERROR BY STEP
 
-## TODO RECONCILE error pair summary of errors per jar/app with error recovery
-## TODO add missing zeros to df_errors_summary 
+
+
+
+
+
+
+
+
+### TODO RECONCILE error pair summary of errors per jar/app with error recovery
+### TODO add missing zeros to df_errors_summary 
 ```{r count-errors_step}
 df <- df_error_pairs
 
@@ -1938,9 +2448,76 @@ An overdispersion diagnostic found no evidence that the Poisson assumption was v
 
 
 
-## ERROR TYPE
+### ERROR RECOVERY
 
-### DESCRIBE Error Type
+#### DESCRIBE Error Recovery
+
+```{r count-recoveries}
+df <- df_error_recoveries
+
+## GROUPED BARCHART []
+g <- df %>% 
+  ggplot(aes(x=FORMAT, fill=RECOVERY))+
+    geom_bar() + 
+  scale_fill_brewer(palette="Paired", direction =1) +
+  facet_wrap(~JAR) + 
+  theme_minimal() + 
+  labs(title = "Errors RECOVERY by FORMAT")
+
+g 
+ggsave(
+  filename = "figs/errors_recovery.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
+```
+#### MODEL Error Recovery
+
+```{r errors-recovery}
+
+## one row per error
+df <- df_error_recoveries |> 
+  droplevels() |> 
+   mutate(RECOVERY = fct_rev(RECOVERY))
+
+m1 <- glmer(
+  RECOVERY ~ FORMAT + JAR + (1 | PID),
+  data = df,
+  family = binomial(link = "logit")
+)
+# summary(m1)
+
+m2 <- glmer(
+  RECOVERY ~ FORMAT * JAR + (1 | PID),
+  data = df,
+  family = binomial(link = "logit")
+)
+summary(m2)
+
+# compare_performance(m1,m2, rank = TRUE)
+
+
+# report(m1)
+report(m2)
+
+
+plot_model(m2, type = "est", title = "error recovery ~ JAR * FORMAT", show.value = TRUE, show.p=TRUE)
+plot_model(m2, type = "int", title = "error recovery ~ JAR * FORMAT")
+
+
+```
+
+
+
+
+
+### ERROR TYPE
+
+#### DESCRIBE Error Type
 
 ```{r}
 
@@ -1982,71 +2559,6 @@ ggsave(
   units = "in"
 )
 
-
-
-```
-
-
-
-## ERROR RECOVERY
-
-### DESCRIBE Error Recovery
-
-```{r count-recoveries}
-df <- df_error_recoveries
-
-## GROUPED BARCHART []
-g <- df %>% 
-  ggplot(aes(x=FORMAT, fill=RECOVERY))+
-    geom_bar() + 
-  scale_fill_brewer(palette="Paired", direction =1) +
-  facet_wrap(~JAR) + 
-  theme_minimal() + 
-  labs(title = "Errors RECOVERY by FORMAT")
-
-g 
-ggsave(
-  filename = "figs/errors_recovery.svg",
-  plot = g,
-  device = svglite,
-  width = 6,
-  height = 4,
-  units = "in"
-)
-
-```
-### MODEL Error Recovery
-
-```{r errors-recovery}
-
-## one row per error
-df <- df_error_recoveries |> 
-  droplevels() |> 
-   mutate(RECOVERY = fct_rev(RECOVERY))
-
-m1 <- glmer(
-  RECOVERY ~ FORMAT + JAR + (1 | PID),
-  data = df,
-  family = binomial(link = "logit")
-)
-# summary(m1)
-
-m2 <- glmer(
-  RECOVERY ~ FORMAT * JAR + (1 | PID),
-  data = df,
-  family = binomial(link = "logit")
-)
-summary(m2)
-
-# compare_performance(m1,m2, rank = TRUE)
-
-
-# report(m1)
-report(m2)
-
-
-plot_model(m2, type = "est", title = "error recovery ~ JAR * FORMAT", show.value = TRUE, show.p=TRUE)
-plot_model(m2, type = "int", title = "error recovery ~ JAR * FORMAT")
 
 
 ```
@@ -2174,24 +2686,16 @@ plot_model(m1, type = "pred")
 
 
 
-## WIP JOIN STEP DURATION - ERRORS
+### WIP JOIN STEP DURATION - ERRORS
 ```{r join-step-duration-error}
 
-df_joined_steps <- df_steps_duration   %>%
-  left_join(
-    df_errors_summary %>%
-      select(PID, JAR, FORMAT, STEP, count),
-    by = c("PID", "JAR", "FORMAT", "STEP")
-  ) %>%
-  mutate(ERROR_COUNT = coalesce(count, 0)) |> select(-count) |> 
-  filter(STEP %nin% c("Flipping/Tapping Through Fast", "Step 0A", "Step 0B")) 
-  
 
-df <- df_joined_steps
 
-df |> ggplot(aes(x= DURATION, y=ERROR_COUNT, color=COMPLEXITY)) + 
+df <- df_joined_steps_errors 
+
+df |> ggplot(aes(x= DURATION, y=ERROR_COUNT, color=FORMAT)) + 
   geom_jitter(alpha = 0.25) + 
-  facet_grid(FORMAT ~ JAR) + 
+  # facet_grid(COMPLEXITY~JAR) + 
   geom_smooth(
     method = "glm",
     method.args = list(family = poisson),
