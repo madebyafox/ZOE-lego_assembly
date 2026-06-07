@@ -71,14 +71,15 @@ library(dplyr) #all the things
 library(lubridate) #timey-wimey
 library(ggformula) #regression syntax viz
 library(Hmisc) # %nin% operator
-library(svglite) #saving ggplots as svgs
-library(kableExtra) #table formatting
 library(tidyr) #tidy data wrangling
 
 ## VIS
 library(ggh4x) # nested facets
 library(ggdist) #distributional viz
 library(ggpubr) #rremove()
+library(kableExtra) #table formatting
+library(svglite) #saving ggplots as svgs
+library(gt) #tables
 
 ## modelling
 library(afex) #anova
@@ -573,7 +574,7 @@ df_joined_steps_errors <- df_steps_duration   %>%
 
 
 
-## DESIGN
+## STUDY DESIGN
 
 In this study, 16 participants completed two lego assembly JARs (jar1, jar2). Each participant completed jar1 first, followed by jar2. This JAR-ORDER could not be counterbalanced, because of the nature of lego assembly.  While completing each JAR each participant had a set of instructions with a particular FORMAT (book, app).  Half of the participants completed jar 1 with the book followed by jar 2 with the app, and the other half did the reverse. In this way, ORDER of format was counterbalanced.  For each participant, we recorded the JAR_DURATION as well as JAR_ERRROR (count).  We broke each task into a series of STEPS (i.e. Step 1, Step 2, Step 3, etc.). Steps 1-29 were the steps that made up jar1 and Steps 30 - 58 were in jar2.  We also have the DURATION and ERROR_COUNT for each step.  For each ERROR we know whether the error was resolved (true/false) and an ERROR_TYPE.   In general, we are interested in the potential effect of FORMAT on task performance.  
 
@@ -583,6 +584,110 @@ Structure of this mixed design is as follows:
 - JAR is within-subject
 - ORDER is between-subjects  (format-order)
 - STEP is nested within JAR
+
+
+
+
+
+## POSTER PLOTS
+
+### DURATION (jar level)
+
+```{r poster-duration-jar}
+## SET DATAFRAME
+df <- df_tasks
+
+## WITHIN-SUBJECTS LINEPLOT
+plot_duration <- df %>% 
+  ggplot(aes(JAR, duration_jar, group = PID, color=FORMAT)) +
+    geom_line(alpha = .3, color = "black") +
+    scale_color_brewer(palette="Set2", direction =-1) +
+  geom_point() +
+  facet_wrap(~ORDER) +
+  theme_minimal() + 
+  labs(title = "Jar Duration by JAR, ORDER, FORMAT")
+
+ggsave(
+  filename = "figs/poster/plot_duration_lineplot.svg",
+  plot = plot_duration,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
+## PRINT TABLE
+(t <- df %>% 
+  mutate(duration_sec = round(duration_jar, 1)) %>% 
+  select(PID, JAR, FORMAT, ORDER, duration_sec, errors_jar) %>% 
+  gt() %>% tab_header("JAR DURATION table")
+)
+
+gtsave(
+  t,
+  filename = "figs/poster/duration_table.png"
+)
+
+
+## LINEAR MIXED EFFECTS MODEL 
+m_jar_duration <- lmer(duration_jar ~ FORMAT + JAR + ORDER + (1 | PID), data = df)
+
+## DIAGNOSTICS
+# plot(m1)
+# qqnorm(resid(m1))
+# hist(resid(m1))
+
+## MODEL TABLE
+tab_model(m_jar_duration,
+  show.se = TRUE,
+  show.stat = TRUE,
+  show.df = TRUE,
+  show.re.var = TRUE,
+  title = paste("Model:", deparse(formula(m_jar_duration))),
+  file = "figs/poster/model_duration_table.html"
+) 
+
+## REPORT MODEL
+report(m_jar_duration)
+
+## DESCRIBE MODEL VARIANCE EXPLAINED
+v <- get_variance(m_jar_duration)
+t <- v$var.fixed + v$var.random + v$var.residual
+fixed <- v$var.fixed/t * 100
+random <- v$var.random/t * 100
+residual <- v$var.residual/t * 100
+
+
+
+```
+**MODEL INTERPRETATION**
+We fit a linear mixed effects model predicting jar duration by FORMAT, JAR and ORDER with PARTICIPANT as a random intercept. The model explained 59% variance in jar duration (R2conditional), with 11% explained by fixed effects, and 47% explained by participant individual differences, and 41% left unexplained. Among the fixed effects, only JAR was a statistically significant predictor, indicating that on average, total duration for Jar 2 was 3.48 minutes 
+longer than Jar 1 (beta = 3.48, 95% CI [1.00, 5.96], t(26) =
+2.88, p = 0.008)
+
+**VARIANCE INTERPRETATION**
+The participant-level variance was `r round(v$var.random, 2)` and the
+residual variance was `r round(v$var.residual, 2)`.
+
+*Fixed effects accounted for approximately
+`r round(100 * v$var.fixed / (v$var.fixed + v$var.random + v$var.residual), 1)`%
+of the total variance, participant-level differences accounted for
+`r round(100 * v$var.random / (v$var.fixed + v$var.random + v$var.residual), 1)`%,
+and
+`r round(100 * v$var.residual / (v$var.fixed + v$var.random + v$var.residual), 1)`%
+remained unexplained.*
+
+
+PID: (Intercept) = 	Between-participant variability in overall jar duration
+Residual = 	Within-participant / observation-level variability not explained by the model
+ICC	= Proportion of remaining variance attributable to participant differences
+
+
+
+
+
+
+
 
 
 
@@ -775,11 +880,12 @@ plot_model(m1, type = "emm",
 ```{r model-jar-duration-table}
 
 ## MODEL TABLE
-tab_model(m1,
+m_table <- tab_model(m1,
   show.se = TRUE,
   show.stat = TRUE,
   show.df = TRUE,
-  show.re.var = TRUE
+  show.re.var = TRUE,
+  title = paste("Model:", deparse(formula(m1)))
 )
 
 ## DESCRIBE MODEL VARIANCE EXPLAINED
