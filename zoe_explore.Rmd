@@ -94,6 +94,26 @@ library(glmmTMB) #negative binomial glm model
 library(broom.mixed) #tidy model tables mixed effects
 library(ggstatsplot) ## plotting w/ statistical tests
 library(emmeans) ## estimated marginal means
+
+
+## color setup
+error_pal <- c(
+  "Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union" = "#D7EAEA",
+  "Carry-forward Incorrect Placement"            = "#AED5D5",
+  "Missed Reassembly Part"                        = "#74B6B5",
+  "Placement On Incorrect Piece(s)"              = "#389695",
+  "Missed/Skipped Piece"                         = "#DED5EA",
+  "Incorrect Piece"                              = "#BCABD5",
+  "Unnecessary Piece"                            = "#9073B9",
+  "Piece Orientation Error"                  = "#EECBE0",
+  "Model Orientation Error"                  = "#D785B9"
+)
+
+error_type_pal <- c(
+  "Placement Errors"                        = "#74B6B5",
+  "Piece Selection Errors"                  = "#BCABD5",
+  "Spatial Transformation Errors"           = "#D785B9"
+)
 ```
 
 ### import lookup tables
@@ -742,7 +762,7 @@ gtsave(
 )
 ```
 
-####model
+#### model
 
 ```{r MODEL_errors-recovery}
 
@@ -811,6 +831,102 @@ ICC	= Proportion of remaining variance attributable to participant differences
 
 
 
+
+
+
+
+
+
+
+
+
+
+### ERROR TYPE
+
+#### visualization
+
+```{r}
+
+## SET ERRORS DF
+df <- df_errors
+
+## GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
+df %>% 
+  ggplot(aes(x=FORMAT, fill=ERROR_TYPE))+
+    geom_bar(position="dodge") + 
+  scale_fill_manual(values = error_type_pal) +
+  theme_minimal() + 
+  labs(title = "Errors by FORMAT and TYPE")
+
+## FACETED GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
+df %>% 
+  ggplot(aes(x=FORMAT, fill=ERROR_TYPE))+
+    geom_bar(position="dodge") + 
+  facet_wrap(~JAR) + 
+  scale_fill_manual(values = error_type_pal) +
+  theme_minimal() + 
+  labs(title = "Errors by FORMAT and TYPE")
+
+
+
+## ZOES DETAIL GRAPH
+(g <- df %>% 
+  ggplot(aes(x=ERROR_TYPE, fill=ERROR))+
+    geom_bar(stat="count") + 
+  facet_wrap(~FORMAT) +
+  scale_fill_manual(values = error_pal) +
+  theme_minimal() + 
+  labs(title = "Errors by FORMAT and TYPE")
+)
+ 
+ggsave(
+  filename = "figs/poster/plot_errors_by_type.svg",
+  plot = g,
+  device = svglite,
+  width = 10,
+  height = 4,
+  units = "in"
+)
+
+## MAKE SUMMARY TABLE 
+plot_df <- df %>%
+  count(ERROR_TYPE, JAR, FORMAT, ERROR)
+
+## PRINT TABLE
+(t <- plot_df %>% 
+  gt() %>% tab_header("ERROR TYPE table")
+)
+
+gtsave(
+  t,
+  filename = "figs/poster/error_type_table.png"
+)
+
+## NESTED ERROR TYPE PLOT WITH JARS
+(g <- plot_df %>%
+  ggplot(aes(
+    x = ERROR_TYPE,
+    y = n,
+    fill = ERROR
+  )) +
+  geom_col() +
+  facet_nested(
+    cols = vars(FORMAT, JAR),
+    drop = TRUE
+  ) +
+  scale_fill_manual(values = error_pal) +
+  theme_minimal())
+
+ggsave(
+  filename = "figs/poster/plot_errors_by_type_NESTED.svg",
+  plot = g,
+  device = svglite,
+  width = 10,
+  height = 4,
+  units = "in"
+)
+
+```
 
 
 
@@ -2683,58 +2799,6 @@ An overdispersion diagnostic found no evidence that the Poisson assumption was v
 
 
 
-### ERROR TYPE
-
-#### DESCRIBE Error Type
-
-```{r}
-
-## SET ERRORS DF
-df <- df_errors
-
-## GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
-df %>% 
-  ggplot(aes(x=FORMAT, fill=ERROR_TYPE))+
-    geom_bar(position="dodge") + 
-  theme_minimal() + 
-  labs(title = "Errors by FORMAT and TYPE")
-
-## FACETED GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
-df %>% 
-  ggplot(aes(x=FORMAT, fill=ERROR_TYPE))+
-    geom_bar(position="dodge") + 
-  facet_wrap(~JAR) + 
-  theme_minimal() + 
-  labs(title = "Errors by FORMAT and TYPE")
-
-
-
-## ZOES DETAIL GRAPH
-g <- df %>% 
-  ggplot(aes(x=ERROR_TYPE, fill=ERROR))+
-    geom_bar(stat="count") + 
-  facet_wrap(~FORMAT) +
-  theme_minimal() + 
-  labs(title = "Errors by FORMAT and TYPE")
-
-g 
-ggsave(
-  filename = "figs/errors_by_format_type.svg",
-  plot = g,
-  device = svglite,
-  width = 10,
-  height = 4,
-  units = "in"
-)
-
-
-
-```
-
-
-
-
-
 ## SPEED-ACCURACY
 
 ### DESCRIBE Jar-level 
@@ -2875,7 +2939,7 @@ df |> ggplot(aes(x= DURATION, y=ERROR_COUNT, color=FORMAT)) +
 
 
 
-## TODO JAR-LEVEL TABLE
+
 ## WIP
 
 
