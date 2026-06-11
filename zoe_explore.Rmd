@@ -28,36 +28,27 @@ editor_options:
 
 
 
-### STEP COMPLEXITY
+### step complexity
 - X complexity score import 
 - X complexity score join to step duration
 - todo something with step repeats / frequency 
 
-### BY PARTICIPANT
+### by participant
 - by participant experience
 - by corsi 
 - participant strategy 
 mean step 0 time 
 step 0 team 
 
-### ERROR-PAIRS
+### error pairs
 - X time——accuracy -- import error pairs 
 - Do ppl who have fewer step repeats have more errors? (visualization
     of ERRORS X STEP frequency by person)
-### STEP-PAIRS 
+### step pairs
 - import step-pairs
 - strategy X errors
 
-### SPEED/ACCURACY
-
-
-
-
-
-
-
-
-
+### speed-accuracy
 
 
 
@@ -113,6 +104,11 @@ error_type_pal <- c(
   "Placement Errors"                        = "#74B6B5",
   "Piece Selection Errors"                  = "#BCABD5",
   "Spatial Transformation Errors"           = "#D785B9"
+)
+
+error_recovery_pal <- c(
+  "Error Recovery"                        = "#DF99A3",
+  "Unresolved Upon Completion"            = "#BE3348"
 )
 ```
 
@@ -592,6 +588,71 @@ df_joined_steps_errors <- df_steps_duration   %>%
 
 ```
 
+### wrangle error-counts
+```{r setup-error-counts}
+
+## generate error counts df
+error_counts_obs <- df_errors %>%
+  count(PID, JAR, FORMAT, name = "n_errors")
+
+assignments <- error_counts_obs %>%
+  group_by(PID) %>%
+  slice(1) %>%
+  ungroup() %>%
+  mutate(
+    sequence = case_when(
+      (JAR == "jar1" & FORMAT == "APP") |
+      (JAR == "jar2" & FORMAT == "BOOKLET") ~ "A",
+
+      (JAR == "jar1" & FORMAT == "BOOKLET") |
+      (JAR == "jar2" & FORMAT == "APP") ~ "B"
+    )
+  )
+
+valid_conditions <- assignments %>%
+  select(PID, sequence) %>%
+  uncount(2) %>%
+  group_by(PID, sequence) %>%
+  mutate(
+    JAR = if_else(row_number() == 1, "jar1", "jar2"),
+    FORMAT = case_when(
+      sequence == "A" & JAR == "jar1" ~ "APP",
+      sequence == "A" & JAR == "jar2" ~ "BOOKLET",
+      sequence == "B" & JAR == "jar1" ~ "BOOKLET",
+      sequence == "B" & JAR == "jar2" ~ "APP"
+    )
+  ) %>%
+  ungroup() %>%
+  select(PID, JAR, FORMAT)
+
+error_counts <- valid_conditions %>%
+  left_join(
+    error_counts_obs,
+    by = c("PID", "JAR", "FORMAT")
+  ) %>%
+  mutate(
+    n_errors = replace_na(n_errors, 0),
+    JAR = as.factor(JAR),
+    FORMAT = as.factor(FORMAT)
+  ) %>%
+  arrange(PID, JAR) 
+
+df_error_counts <- error_counts %>% 
+## CREATE ORDER FACTOR 
+  mutate(
+    ORDER = case_when(
+      (JAR == "jar1" & FORMAT == "BOOKLET") |
+      (JAR == "jar2" & FORMAT == "APP") ~ "BOOK_FIRST",
+
+      (JAR == "jar1" & FORMAT == "APP") |
+      (JAR == "jar2" & FORMAT == "BOOKLET") ~ "APP_FIRST"),
+  ORDER = factor(ORDER),
+  ORDER = forcats::fct_rev(ORDER)) %>% 
+  droplevels()
+
+rm(error_counts_obs, valid_conditions, error_counts)
+```
+
 
 
 ## STUDY DESIGN
@@ -717,7 +778,7 @@ ICC	= Proportion of remaining variance attributable to participant differences
 
 
 
-### ERROR RECOVERY (jar level)
+### ERROR RECOVERY (error level)
 
 #### visualization
 
@@ -728,7 +789,7 @@ df <- df_error_recoveries
 g <- df %>% 
   ggplot(aes(x=JAR, fill=RECOVERY))+
     geom_bar() + 
-  scale_fill_brewer(palette="Paired", direction =1) +
+  scale_fill_manual(values = error_recovery_pal) +
   facet_wrap(~ORDER) + 
   theme_minimal() + 
   labs(title = "Errors RECOVERY by JAR & ORDER")
@@ -942,7 +1003,7 @@ Are jar durations different for book versus app instructions, adjusting for JAR 
 **TLDR** : significant main effect of JAR; r2 conditional = 59% r2 marginal = 11%
 
 ### JAR DURATION 
-#### DESCRIBE JAR Duration
+#### VIS JAR Duration
 ```{r}
 ## SET DATAFRAME
 df <- df_tasks
@@ -1006,16 +1067,62 @@ report(m1)
 ## PLOT MODEL ESTIMATES 
 plot_model(m1, type = "est", show.values = TRUE, show.p=TRUE) +
   labs( title = "Model Estimates",
-    subtitle = "duration ~ FORMAT + JAR + ORDER + (1|PID)") + 
+    subtitle = paste("", deparse(formula(m1)))) +
   theme_minimal()
 
 
 ## PLOT ESTIMATED MARGINAL MEANS
-plot_model(m1, type = "emm", 
-           terms = c("JAR","FORMAT")) + 
+# p <- plot_model(m1, type = "emm", 
+#            terms = c("JAR","FORMAT","ORDER")) + 
+#   labs(
+#     subtitle = "duration ~ FORMAT + JAR + ORDER + (1|PID)",
+#     caption = "(estimated marginal means)") + theme_minimal()
+
+
+## SET DATAFRAME
+df <- df_tasks
+
+## PLOT ESTIMATED MARGINAL MEANS WITH RAW DATA 
+(g <- plot_model(
+  m1,
+  type = "emm", 
+  terms = c("JAR", "FORMAT", "ORDER")
+) + 
+  geom_jitter(
+    data = df %>%
+      mutate(JAR_num = as.numeric(JAR)),
+    aes(
+      x = JAR_num,
+      y = duration_jar,
+      colour = FORMAT
+    ),
+    width = 0.08,
+    alpha = 0.20,
+    size = 1.5,
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(
+    breaks = c(1, 2),
+    labels = c("jar1", "jar2")
+  ) +
   labs(
-    subtitle = "duration ~ FORMAT + JAR + ORDER + (1|PID)",
-    caption = "(estimated marginal means)") + theme_minimal()
+    subtitle = paste("", deparse(formula(m1))),
+    caption = "(model estimated marginal means + raw data points)"
+  ) +
+  theme_minimal())
+
+ggsave(
+  filename = "figs/thesis/plot_model_jar_duration_emm.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
+
+
+
 ```
 
 #### MODEL TABLE Jar Duration
@@ -1028,8 +1135,8 @@ plot_model(m1, type = "emm",
   show.stat = TRUE,
   show.df = TRUE,
   show.re.var = TRUE,
-  title = paste("Model:", deparse(formula(m1)))
-))
+  title = paste("Model:", deparse(formula(m1)))) 
+)
 
 ## DESCRIBE MODEL VARIANCE EXPLAINED
 v <- get_variance(m1)
@@ -1307,16 +1414,63 @@ report(m2)
 ## PLOT MODEL ESTIMATES 
 plot_model(m2, type = "est", show.values = TRUE, show.p=TRUE) +
   labs( title = "Model Estimates",
-    subtitle = "duration ~ FORMAT + JAR + ORDER + COMPLEXITY + (1|PID) + (1|STEP)") + 
+    subtitle = paste("", deparse(formula(m2))))+
   theme_minimal()
 
 
 ## PLOT ESTIMATED MARGINAL MEANS
 plot_model(m2, type = "emm", 
-           terms = c("JAR","FORMAT", "ORDER","COMPLEXITY")) + 
+           terms = c("JAR","FORMAT","COMPLEXITY")) + 
   labs(
-    subtitle = "duration ~ FORMAT + JAR + ORDER + COMPLEIXTY + (1|PID) + (1|STEP)",
-    caption = "(estimated marginal means)") + theme_minimal()
+     subtitle = paste("", deparse(formula(m2))),
+      caption = "(estimated marginal means)") + 
+  theme_minimal()
+
+
+## PLOT ESTIMATED MARGINAL MEANS WITH RAW DATA 
+plot_model(
+  m2,
+  show.values = TRUE,
+  type = "emm",
+  terms = c("JAR", "FORMAT", "COMPLEXITY")
+) + 
+  geom_jitter(
+    data = df %>%
+      mutate(
+        JAR_num = case_when(
+          JAR == "jar1" ~ 1,
+          JAR == "jar2" ~ 2
+        )
+      ),
+    aes(
+      x = JAR_num,
+      y = DURATION,
+      colour = FORMAT
+    ),
+    width = 0.08,
+    alpha = 0.05,
+    size = 1,
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(
+    breaks = c(1, 2),
+    labels = c("jar1", "jar2")
+  ) +
+  labs(
+    subtitle = paste("", deparse(formula(m2))),
+    caption = "(estimated marginal means + raw data)"
+  ) +
+  theme_minimal()
+
+ggsave(
+  filename = "figs/thesis/plot_model_step_duration_emm.svg",
+  plot = plot_duration,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
 
 
 ## PLOT RANDOM EFFECTS
@@ -1380,6 +1534,463 @@ ICC	= Proportion of remaining variance attributable to participant differences
 
 
 
+
+
+
+
+
+## ERRORS 
+
+
+### ERROR COUNT
+
+
+##### VIS JAR Error Count
+```{r test-error-count-FORMAT}
+
+## SET DATAFRAME
+df <- df_error_counts
+
+## GGPLOT LINE GRAPH WITHIN SUBJECTS
+df %>%
+  ggplot(aes(JAR, n_errors, group = PID, color=FORMAT)) +
+  geom_line(alpha = .3, color="black") +
+  scale_color_brewer(palette="Set2", direction =-1) +
+  geom_jitter(width = 0.01, alpha = 0.6) +
+  facet_wrap(~ORDER) +
+  theme_minimal() + 
+  labs(title = "Error Count by JAR and FORMAT")
+
+## ANOVA
+# a <- aov_ez(
+#   id = "PID",
+#   dv = "n_errors",
+#   within = c("FORMAT"),
+#   between = c("ORDER"),
+#   data = df
+# )
+# summary(a)
+
+### BOXPLOT STRIP PLOT
+df %>% ggplot(aes(x = JAR, y = n_errors, colour = FORMAT)) +
+  geom_boxplot(
+    aes(group = FORMAT),
+    outlier.shape = NA,
+    width = 0.2
+  ) +
+  scale_color_brewer(palette="Set2", direction =-1) +
+  geom_jitter(width = 0.01, alpha = 0.6) +
+  # DISPLAY MEAN AS POINT
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 18,
+    size = 3,
+    colour = "black"
+  ) +
+  # MEAN LABEL
+  stat_summary(
+    fun = mean,
+    geom = "text",
+    aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
+    vjust = -0.8,
+    colour = "black",
+    size = 3
+  ) +
+  facet_wrap(~ ORDER) +
+  theme_minimal() + 
+  labs(title = "Error Count by JAR & FORMAT", 
+       y = "Number of Errors")
+
+```
+
+
+##### MODEL JAR Error Count
+What predicts number of errors?
+
+
+```{r model-error-count-jar-poisson}
+
+## SET DATAFRAME
+df <- df_error_counts 
+
+######## DROP OUTLINES 
+### DROP P10, P13
+# df <- df |> filter(PID %nin% c("P10", "P13")) |> droplevels()
+
+## MODEL 1 | Poisson model for count data
+m_pois <- glmer(
+  n_errors ~ FORMAT + JAR + ORDER + (1|PID),
+  family = poisson,
+  data = df
+)
+summary(m_pois)
+check_overdispersion(m_pois)
+# anova(m_pois)
+# report(m_pois)
+
+```
+
+##### MODEL VIS JAR Error Count
+
+```{r vis-model-error-count-jar}
+
+## SET DATAFRAME
+df <- df_error_counts 
+
+## set model
+m <- m_pois
+
+## PLOT MODEL ESTIMATES
+# plot_model(m_pois, show.values= TRUE, type = "re") # random effects
+## PLOT MODEL ESTIMATES
+plot_model(m, show.values= TRUE, type = "est", show.p=TRUE) 
+        
+
+
+## PLOT ESTIMATED MARGINAL MEANS WITH RAW DATA 
+(g <- plot_model(
+  m_pois,
+  bias_correction = TRUE,
+  type = "emm", 
+  terms = c("JAR", "FORMAT", "ORDER")
+) + 
+  geom_jitter(
+    data = df %>%
+      mutate(JAR = as.numeric(JAR)),
+    aes(
+      x = JAR,
+      y = n_errors,
+      colour = FORMAT
+    ),
+    width = 0.08,
+    alpha = 0.20,
+    size = 1.5,
+    inherit.aes = FALSE
+  ) +
+  # scale_x_continuous(
+  #   breaks = c(1, 2),
+  #   labels = c("jar1", "jar2")
+  # ) +
+  labs(
+    subtitle = paste("", deparse(formula(m_pois))),
+    caption = "(model estimated marginal means + raw data points)"
+  ) +
+  theme_minimal()
+)
+
+ggsave(
+  filename = "figs/thesis/plot_model_jar_errorcount_emm.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+```
+
+##### MODEL TABLE JAR Error Count
+
+
+```{r model-table-jar-error-count}
+(m_pois_tab <- tidy(m_pois, effects = "fixed") %>%
+  mutate(
+    beta = round(estimate, 2),
+    se   = round(std.error, 2),
+    z    = round(statistic, 2),
+    p    = ifelse(p.value < .001, "< .001", paste0("= ", round(p.value, 3))),
+    irr  = round(exp(estimate), 2),
+    pct_change = round((exp(estimate) - 1) * 100, 0)
+  ))
+
+format_booklet <- m_pois_tab %>% filter(term == "FORMATBOOKLET")
+jar2           <- m_pois_tab %>% filter(term == "JARjar2")
+intercept      <- m_pois_tab %>% filter(term == "(Intercept)")
+
+## RANDOM EFFECT
+re_var <- as.data.frame(VarCorr(m_pois)) %>%
+  filter(grp == "PID") %>%
+  pull(vcov)
+
+re_sd <- as.data.frame(VarCorr(m_pois)) %>%
+  filter(grp == "PID") %>%
+  pull(sdcor)
+
+## OVERDISPERSION
+od <- performance::check_overdispersion(m_pois)
+
+## DESCRIBE MODEL VARIANCE EXPLAINED
+v_pois <- get_variance(m_pois,   tolerance = 1e-12)
+total_var <- v_pois$var.fixed +
+             v_pois$var.random +
+             v_pois$var.residual
+
+fixed_pct <- 100 * v_pois$var.fixed / total_var
+random_pct <- 100 * v_pois$var.random / total_var
+resid_pct <- 100 * v_pois$var.residual / total_var
+
+
+## MODEL TABLE
+(tab_model(m_pois,
+  show.se = TRUE,
+  show.stat = TRUE,
+  show.df = TRUE,
+  show.re.var = TRUE
+))
+```
+
+A Poisson generalized linear mixed-effects model was fit to predict error count from FORMAT and JAR, with a random intercept for participant (PID). A significant effect of JAR was observed, with Jar 2 associated with higher error counts than Jar 1 (β = `r jar2$beta`, SE = `r jar2$se`, *z* = `r jar2$z`, *p* `r jar2$p`). Exponentiating the coefficient indicated that expected error counts were approximately `r jar2$pct_change`% higher in Jar 2 than in Jar 1 (IRR = `r jar2$irr`). The effect of FORMAT was not statistically significant (β = `r format_booklet$beta`, SE = `r format_booklet$se`, *z* = `r format_booklet$z`, *p* `r format_booklet$p`), although error counts were estimated to be approximately `r format_booklet$pct_change`% higher for BOOKLET than APP (IRR = `r format_booklet$irr`). The participant-level random intercept variance was `r round(re_var, 2)` (SD = `r round(re_sd, 2)`). 
+
+Variance decomposition indicated that fixed effects accounted for approximately `r round(fixed_pct, 1)`% of the total variance, participant-level variability accounted for `r round(random_pct, 1)`%, and `r round(resid_pct, 1)`% remained unexplained. 
+
+An overdispersion diagnostic found no evidence that the Poisson assumption was violated (dispersion ratio = `r round(od$dispersion_ratio, 2)`, *p* = `r ifelse(od$p_value < .001, "< .001", paste0("= ", round(od$p_value, 3)))`).
+
+
+
+
+
+
+
+### WIP ERROR RECOVERY (error level)
+
+#### VIS ERROR Recovery
+
+```{r}
+## NOTE:: DUPLICATED FROM POSTER
+
+
+## SET DATAFRAME
+df <- df_error_recoveries
+
+## GROUPED BARCHART []
+df %>% 
+  ggplot(aes(x=JAR, fill=RECOVERY))+
+    geom_bar() + 
+  scale_fill_manual(values = error_recovery_pal) +
+  facet_wrap(~ORDER) + 
+  theme_minimal() + 
+  labs(title = "Errors RECOVERY by JAR & ORDER")
+
+## SUMMARY TABLE
+ds <- df %>% 
+  group_by(JAR, FORMAT, RECOVERY) %>%
+  summarise(
+    n_errors = n(),
+    .groups = "drop"
+  )
+
+## PRINT TABLE
+(t <- ds %>% gt() %>% tab_header("JAR ERROR RECOVERY table"))
+```
+
+#### MODEL ERROR Recovery
+
+```{r}
+
+## one row per error
+df <- df_error_recoveries |> 
+  droplevels() |> 
+   mutate(RECOVERY = fct_rev(RECOVERY))
+
+m1 <- glmer(
+  RECOVERY ~ FORMAT + JAR + (1 | PID),
+  data = df,
+  family = binomial(link = "logit")
+)
+
+m2 <- glmer(
+  RECOVERY ~ FORMAT + JAR + ORDER + (1 | PID),
+  data = df,
+  family = binomial(link = "logit")
+)
+
+## note interaction model not appropriate given design
+
+# report(m1)
+report(m2)
+
+## MODEL TABLE
+tab_model(m2,
+  show.se = TRUE,
+  show.stat = TRUE,
+  show.df = TRUE,
+  show.re.var = TRUE,
+  title = paste("Model:", deparse(formula(m2)))
+) 
+
+## DESCRIBE MODEL VARIANCE EXPLAINED
+v <- get_variance(m2)
+t <- v$var.fixed + v$var.random + v$var.residual
+fixed <- v$var.fixed/t * 100
+random <- v$var.random/t * 100
+residual <- v$var.residual/t * 100
+
+
+
+```
+
+
+
+
+#### MODEL VIS ERROR Recovery
+
+```{r}
+
+## SET DATAFRAME
+## one row per error
+df <- df_error_recoveries |> 
+  droplevels() |> 
+   mutate(RECOVERY = fct_rev(RECOVERY))
+
+## set model
+m <- m2
+
+## PLOT MODEL ESTIMATES
+plot_model(m2, show.values= TRUE, type = "est", show.p=TRUE) 
+        
+
+
+## PLOT ESTIMATED MARGINAL MEANS 
+(g <- plot_model(
+  m,
+  bias_correction = TRUE,
+  type = "emm", 
+  terms = c("JAR", "FORMAT", "ORDER")
+) +
+  labs(
+    subtitle = paste("", deparse(formula(m))),
+    caption = "(model estimated marginal means)"
+  ) +
+  theme_minimal()
+)
+
+ggsave(
+  filename = "figs/thesis/plot_model_jar_error_recovery_emm.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+### WIP ERROR TYPE
+
+#### VIS Error Type (Simple)
+
+```{r}
+## SET ERRORS DF
+df <- df_errors
+
+
+## GROUPED BARCHART [COUNT ERRORS X TYPE X FORMAT X ]
+df %>% 
+  ggplot(aes(x=FORMAT, fill=ERROR_TYPE))+
+    geom_bar(position="dodge") + 
+  scale_fill_manual(values = error_type_pal) +
+  theme_minimal() + 
+  labs(title = "Errors by FORMAT and TYPE")
+
+
+## GROUPED BARCHART FACET
+df %>% 
+  ggplot(aes(x=FORMAT, fill=ERROR_TYPE))+
+    geom_bar() + 
+  scale_fill_manual(values = error_type_pal) +
+  facet_wrap(~JAR) + 
+  theme_minimal() + 
+  labs(title = "Errors Type by JAR and FORMAT")
+  
+## CREATE SUMMARY DATAFRAME  
+ plot_df <- df %>%
+  count(ORDER, JAR, FORMAT, ERROR_TYPE) |> droplevels()
+
+ 
+ ## FACETED PLOT
+ (g <- plot_df %>%
+  ggplot(
+    aes(
+      x = JAR,
+      y = n,
+      fill = ERROR_TYPE
+    )
+  ) +
+  geom_col() +
+  facet_nested(~ ORDER + FORMAT,     scales = "free_x", drop = TRUE) + 
+  scale_fill_manual(values = error_type_pal) +
+  theme_minimal() +
+  labs(
+    title = "Errors Type by JAR, FORMAT, and ORDER",
+    x = "JAR",
+    y = "Number of Errors",
+    fill = "Error Type"
+))
+ 
+ggsave(
+  filename = "figs/thesis/plot_vis_error_type_grouped.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
+
+```
+
+
+#### WIP MODEL Error Type
+
+```{r }
+# 
+# ## SET DATAFRAME
+# df <- df_error_pairs
+# 
+# ## verify reference level
+# levels(df$ERROR_TYPE)
+# 
+# ## PREDICT TYPE by FORMAT JAR ORDER
+# 
+# m1 <- mblogit(
+#   ERROR_TYPE ~ JAR + FORMAT + ORDER,
+#   random = list(
+#     ~ 1 | PID,
+#     ~ 1 | STEP
+#   ),
+#   data = df
+# )
+# summary(m1)
+# 
+# 
+# m2 <- mblogit(
+#   ERROR_TYPE ~  FORMAT + ORDER + COMPLEXITY,
+#   random = list(
+#     ~ 1 | PID,
+#     ~ 1 | STEP
+#   ),
+#   data = df
+# )
+# summary(m2)
+# 
+
+
+
+```
+
+
+
 ## EXPLORATORY VIS
 
 ##### tile plot of Participant-Step time
@@ -1407,7 +2018,7 @@ ggplot(aes(x = factor(STEP), y = factor(PID), fill = DURATION)) +
 ```
 
 
-#####Highly variant steps
+##### Highly variant steps
 steps that show variance between formats
 Step 5, 
 ```{r}
@@ -1475,6 +2086,10 @@ df %>%
 
 ```
 
+
+
+
+# STASH
 
 ## JAR-LEVEL ANALYSIS 
 
@@ -2094,473 +2709,6 @@ summary(a)
 
 
 
-## ERRORS
-
-### ERROR COUNT
-#### SETUP Error Count
-
-```{r setup-error-counts}
-
-## generate error counts df
-error_counts_obs <- df_errors %>%
-  count(PID, JAR, FORMAT, name = "n_errors")
-
-assignments <- error_counts_obs %>%
-  group_by(PID) %>%
-  slice(1) %>%
-  ungroup() %>%
-  mutate(
-    sequence = case_when(
-      (JAR == "jar1" & FORMAT == "APP") |
-      (JAR == "jar2" & FORMAT == "BOOKLET") ~ "A",
-
-      (JAR == "jar1" & FORMAT == "BOOKLET") |
-      (JAR == "jar2" & FORMAT == "APP") ~ "B"
-    )
-  )
-
-valid_conditions <- assignments %>%
-  select(PID, sequence) %>%
-  uncount(2) %>%
-  group_by(PID, sequence) %>%
-  mutate(
-    JAR = if_else(row_number() == 1, "jar1", "jar2"),
-    FORMAT = case_when(
-      sequence == "A" & JAR == "jar1" ~ "APP",
-      sequence == "A" & JAR == "jar2" ~ "BOOKLET",
-      sequence == "B" & JAR == "jar1" ~ "BOOKLET",
-      sequence == "B" & JAR == "jar2" ~ "APP"
-    )
-  ) %>%
-  ungroup() %>%
-  select(PID, JAR, FORMAT)
-
-error_counts <- valid_conditions %>%
-  left_join(
-    error_counts_obs,
-    by = c("PID", "JAR", "FORMAT")
-  ) %>%
-  mutate(
-    n_errors = replace_na(n_errors, 0),
-    JAR = as.factor(JAR),
-    FORMAT = as.factor(FORMAT)
-  ) %>%
-  arrange(PID, JAR) 
-
-df_error_counts <- error_counts %>% 
-## CREATE ORDER FACTOR 
-  mutate(
-    ORDER = case_when(
-      (JAR == "jar1" & FORMAT == "BOOKLET") |
-      (JAR == "jar2" & FORMAT == "APP") ~ "BOOK_FIRST",
-
-      (JAR == "jar1" & FORMAT == "APP") |
-      (JAR == "jar2" & FORMAT == "BOOKLET") ~ "APP_FIRST"),
-  ORDER = factor(ORDER),
-  ORDER = forcats::fct_rev(ORDER)) %>% 
-  droplevels()
-
-rm(error_counts_obs, valid_conditions, error_counts)
-```
-
-#### DESCRIBE Error Count (Participant)
-
-```{r count-errors}
-df <- df_error_counts
-
-
-## GROUPED BARCHART 
-df %>% 
-  ggplot(aes(x=PID, fill=JAR, y = n_errors))+
-    geom_col(position = "dodge") +
-    facet_wrap(~ORDER, scales = "free_x") + 
-    scale_fill_brewer(palette="Paired", direction =-1) +
-    theme_minimal() + 
-    labs(title = "Errors per JAR per Participant")
-
-## GROUPED BARCHART 
-df %>% 
-  ggplot(aes(x=PID, fill=FORMAT, y = n_errors))+
-    geom_col(position = "dodge") +
-    facet_wrap(~ORDER, scales = "free_x") + 
-    scale_fill_brewer(palette="Set2", direction =-1) +
-    theme_minimal() + 
-    labs(title = "Errors per JAR per Participant")
-
-```
-
-
-#### DESCRIBE Error Count (Step) —- VIS ERROR BY STEP
-
-
-
-
-
-
-
-
-
-### TODO RECONCILE error pair summary of errors per jar/app with error recovery
-### TODO add missing zeros to df_errors_summary 
-```{r count-errors_step}
-df <- df_error_pairs
-
-df2 <- df_errors_summary
-
-
-## GROUPED BARCHART 
-df2 %>% 
-  ggplot(aes(x=STEP, fill=FORMAT ))+
-    geom_bar(position = "dodge") +
-    facet_wrap(~JAR) + 
-    # facet_wrap(~ORDER, scales = "free_x") + 
-    # scale_fill_brewer(palette="Paired", direction =-1) +
-    theme_minimal()
-# + 
-    # labs(title = "Errors per JAR per Participant")
-
-
-## GROUPED BARCHART 
-df %>% 
-  ggplot(aes(x=COMPLEXITY, fill=FORMAT ))+
-    geom_bar(position = "dodge") +
-    facet_wrap(~JAR) + 
-    # facet_wrap(~ORDER, scales = "free_x") + 
-    # scale_fill_brewer(palette="Paired", direction =-1) +
-    theme_minimal()
-# + 
-    # labs(title = "Errors per JAR per Participant")
-
-
-
-# ## GROUPED BARCHART 
-# df %>% 
-#   ggplot(aes(x=PID, fill=FORMAT, y = n_errors))+
-#     geom_col(position = "dodge") +
-#     facet_wrap(~ORDER, scales = "free_x") + 
-#     scale_fill_brewer(palette="Set2", direction =-1) +
-#     theme_minimal() + 
-#     labs(title = "Errors per JAR per Participant")
-
-```
-
-
-### TEST Error Count JAR
-```{r test-error-count-JAR}
-df <- df_error_counts
-
-## GGSTATSPLOT _ GROUPED WITHIN STATS
-grouped_ggwithinstats(data = df, 
-              x = JAR, y = n_errors,
-              grouping.var = ORDER,
-              by = PID,
-              type= "nonparametric",
-              results.subtitle = TRUE,
-              bf.message = FALSE, 
-              ggtheme = ggplot2::theme_minimal())
-
-## GGPLOT LINE GRAPH WITHIN SUBJECTS
-df %>%
-  ggplot(aes(JAR, n_errors, group = PID, color=JAR)) +
-  geom_line(alpha = .3) +
-  scale_color_brewer(palette="Paired", direction =-1) +
-  geom_point() +
-  facet_wrap(~ORDER) +
-  theme_minimal() + 
-  labs(title = "Error Count by JAR and ORDER")
-
-## ANOVA
-a <- aov_ez(
-  id = "PID",
-  dv = "n_errors",
-  within = c("JAR"),
-  between = c("ORDER"),
-  data = df
-)
-summary(a)
-
-
-```
-
-### TEST Error Count FORMAT
-```{r test-error-count-FORMAT}
-df <- df_error_counts
-
-## GGSTATSPLOT _ GROUPED WITHIN STATS
-grouped_ggwithinstats(data = df, 
-              x = FORMAT, y = n_errors,
-              grouping.var = ORDER,
-              by = PID,
-              type= "nonparametric",
-              results.subtitle = TRUE,
-              bf.message = FALSE, 
-              ggtheme = ggplot2::theme_minimal())
-
-## GGPLOT LINE GRAPH WITHIN SUBJECTS
-df %>%
-  ggplot(aes(FORMAT, n_errors, group = PID, color=JAR)) +
-  geom_line(alpha = .3, color="black") +
-  scale_fill_brewer(palette="Set2", direction =-1) +
-  geom_point() +
-  facet_wrap(~ORDER) +
-  theme_minimal() + 
-  labs(title = "Error Count by JAR and ORDER")
-
-## ANOVA
-a <- aov_ez(
-  id = "PID",
-  dv = "n_errors",
-  within = c("FORMAT"),
-  between = c("ORDER"),
-  data = df
-)
-summary(a)
-
-
-```
-
-
-### MODEL Error Count
-What predicts number of errors?
-
-```{r error-vis}
-
-## set dataframe
-df <- df_error_counts
-
-df %>% ggplot(
-       aes(x = FORMAT,
-           y = n_errors,
-           colour = JAR)) +
-  geom_boxplot(
-    aes(group = FORMAT),
-    outlier.shape = NA
-  ) +
-  geom_jitter(width = 0.08, alpha = 0.6) +
-    # DISPLAY MEAN AS POINT
-  stat_summary(
-    fun = mean,
-    geom = "point",
-    shape = 18,
-    size = 3,
-    colour = "black"
-  ) +
-  # MEAN LABEL
-  stat_summary(
-    fun = mean,
-    geom = "text",
-    aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
-    vjust = -0.8,
-    colour = "black",
-    size = 3
-  ) +
-  facet_wrap(~ JAR) +
-  theme_minimal() + 
-  labs(title = "Error Count by Format & Jar", 
-       y = "Number of Errors")
-
-
-
-
-# ######## DROP OUTLINES 
-# ### DROP P10, P13
-# # df <- df |> filter(PID %nin% c("P10", "P13")) |> droplevels()
-# 
-# 
-# ### removed 
-# ggplot(df,
-#        aes(x = FORMAT,
-#            y = n_errors,
-#            colour = JAR)) +
-#   geom_boxplot(
-#     aes(group = FORMAT),
-#     outlier.shape = NA
-#   ) +
-#   geom_jitter(width = 0.08, alpha = 0.6) +
-#     # DISPLAY MEAN AS POINT
-#   stat_summary(
-#     fun = mean,
-#     geom = "point",
-#     shape = 18,
-#     size = 3,
-#     colour = "black"
-#   ) +
-#   # MEAN LABEL
-#   stat_summary(
-#     fun = mean,
-#     geom = "text",
-#     aes(label = paste("M=",sprintf("%.2f", after_stat(y)))),
-#     vjust = -0.8,
-#     colour = "black",
-#     size = 3
-#   ) +
-#   facet_wrap(~ JAR) +
-#   theme_minimal() + 
-#   labs(title = "Error Count by Format & Jar", 
-#        y = "Number of Errors")
-# 
-# 
-# ## INDIVIDUAL DIFFERENCES BY JAR
-# ggplot(df, aes(x = JAR, y = n_errors, group = PID)) +
-#   geom_line(alpha = 0.35) +
-#   geom_point(size = 2, alpha = 0.8) +
-#   theme_bw() +
-#   labs(
-#     x = "Jar",
-#     y = "Error Count"
-#   )+ 
-#   theme_minimal() + 
-#   labs(title = "Error Count by JAR",
-#                          subtitle = "(lines connect PIDs)")
-# 
-# ## INDIVIDUAL DIFFERENCES BY JAR
-# ggplot(df, aes(x = FORMAT, y = n_errors, group = PID)) +
-#   geom_line(alpha = 0.35) +
-#   geom_point(size = 2, alpha = 0.8) +
-#   theme_bw() +
-#   labs(
-#     x = "Format",
-#     y = "Error Count"
-#   )+
-#   theme_minimal() + 
-#   labs(title = "Error Count by FORMAT",
-#                          subtitle = "(lines connect PIDs)")
-
-
-```
-
-```{r model-error-poisson}
-
-## df = error counts dataframe
-df <- df_error_counts 
-
-######## DROP OUTLINES 
-### DROP P10, P13
-# df <- df |> filter(PID %nin% c("P10", "P13")) |> droplevels()
-
-## MODEL 1 | Poisson model for count data
-m_pois <- glmer(
-  n_errors ~ FORMAT + JAR + (1|PID),
-  family = poisson,
-  data = df
-)
-summary(m_pois)
-check_overdispersion(m_pois)
-# anova(m_pois)
-# report(m_pois)
-
-
-
-
-
-
-
-## PLOT MODEL ESTIMATES
-# plot_model(m_pois, show.values= TRUE, type = "re") # random effects
-plot_model(m_pois, show.values= TRUE, type = "est", title = "Model Estimate (n_errors ~ FORMAT + JAR + (1|PID), family = poisson")
-
-
-## MODEL TABLE
-m_pois_tab <- tidy(m_pois, effects = "fixed") %>%
-  mutate(
-    beta = round(estimate, 2),
-    se   = round(std.error, 2),
-    z    = round(statistic, 2),
-    p    = ifelse(p.value < .001, "< .001", paste0("= ", round(p.value, 3))),
-    irr  = round(exp(estimate), 2),
-    pct_change = round((exp(estimate) - 1) * 100, 0)
-  )
-
-format_booklet <- m_pois_tab %>% filter(term == "FORMATBOOKLET")
-jar2           <- m_pois_tab %>% filter(term == "JARjar2")
-intercept      <- m_pois_tab %>% filter(term == "(Intercept)")
-
-## RANDOM EFFECT
-re_var <- as.data.frame(VarCorr(m_pois)) %>%
-  filter(grp == "PID") %>%
-  pull(vcov)
-
-re_sd <- as.data.frame(VarCorr(m_pois)) %>%
-  filter(grp == "PID") %>%
-  pull(sdcor)
-
-## OVERDISPERSION
-od <- performance::check_overdispersion(m_pois)
-
-## DESCRIBE MODEL VARIANCE EXPLAINED
-v_pois <- get_variance(m_pois,   tolerance = 1e-12)
-total_var <- v_pois$var.fixed +
-             v_pois$var.random +
-             v_pois$var.residual
-
-fixed_pct <- 100 * v_pois$var.fixed / total_var
-random_pct <- 100 * v_pois$var.random / total_var
-resid_pct <- 100 * v_pois$var.residual / total_var
-
-```
-
-A Poisson generalized linear mixed-effects model was fit to predict error count from FORMAT and JAR, with a random intercept for participant (PID). A significant effect of JAR was observed, with Jar 2 associated with higher error counts than Jar 1 (β = `r jar2$beta`, SE = `r jar2$se`, *z* = `r jar2$z`, *p* `r jar2$p`). Exponentiating the coefficient indicated that expected error counts were approximately `r jar2$pct_change`% higher in Jar 2 than in Jar 1 (IRR = `r jar2$irr`). The effect of FORMAT was not statistically significant (β = `r format_booklet$beta`, SE = `r format_booklet$se`, *z* = `r format_booklet$z`, *p* `r format_booklet$p`), although error counts were estimated to be approximately `r format_booklet$pct_change`% higher for BOOKLET than APP (IRR = `r format_booklet$irr`). The participant-level random intercept variance was `r round(re_var, 2)` (SD = `r round(re_sd, 2)`). 
-
-Variance decomposition indicated that fixed effects accounted for approximately `r round(fixed_pct, 1)`% of the total variance, participant-level variability accounted for `r round(random_pct, 1)`%, and `r round(resid_pct, 1)`% remained unexplained. 
-
-An overdispersion diagnostic found no evidence that the Poisson assumption was violated (dispersion ratio = `r round(od$dispersion_ratio, 2)`, *p* = `r ifelse(od$p_value < .001, "< .001", paste0("= ", round(od$p_value, 3)))`).
-
-```{r model-error-negativeBIONOM}
-# ## MODEL 2 | Negative binomial model for overdispersed count data
-# m_nb <- glmmTMB(
-#   n_errors ~ FORMAT + JAR + (1|PID),
-#   family = nbinom2, 
-#   data = error_counts
-# )
-# summary (m_nb)
-# report(m_nb)
-# 
-# ## PLOT MODEL ESTIMATES
-# plot_model(m_nb, values = TRUE, type = "est",
-#            title = "Model Prediction for (n_errors n_errors ~ FORMAT + JAR + (1|PID) [family = nbinom2]")
-# 
-# 
-# ## MODEL TABLE
-# m_nb_tab <- tidy(m_nb, effects = "fixed") %>%
-#   mutate(
-#     beta = round(estimate, 2),
-#     se   = round(std.error, 2),
-#     z    = round(statistic, 2),
-#     p    = ifelse(p.value < .001, "< .001", paste0("= ", round(p.value, 3)))
-#   )
-# 
-# #m_nb_tab
-# format_app <- m_nb_tab %>% filter(term == "FORMATAPP")
-# jar2       <- m_nb_tab %>% filter(term == "JARjar2")
-# re_var <- as.data.frame(VarCorr(m_nb)$cond$PID)[1, 1]
-# 
-# ## DESCRIBE MODEL VARIANCE EXPLAINED
-# v_nb <- get_variance(m_nb,   tolerance = 1e-12)
-# total_var <- v_nb$var.fixed +
-#              v_nb$var.random +
-#              v_nb$var.residual
-# 
-# fixed_pct <- 100 * v_nb$var.fixed / total_var
-# random_pct <- 100 * v_nb$var.random / total_var
-# resid_pct <- 100 * v_nb$var.residual / total_var
-
-
-# A negative binomial generalized linear mixed-effects model was fit to
-# predict error counts from FORMAT and JAR, with a random intercept for
-# participant (PID). Neither predictor was significantly associated with
-# error count. Relative to the reference format, the APP format was
-# associated with a non-significant reduction in expected errors (β =
-# `r format_app$beta`, SE = `r format_app$se`, z = `r format_app$z`, p
-# `r format_app$p`). Similarly, Jar 2 was associated with a
-# non-significant increase in expected errors relative to Jar 1 (β =
-# `r jar2$beta`, SE = `r jar2$se`, z = `r jar2$z`, p `r jar2$p`). The
-# participant-level random-intercept variance was `r signif(re_var, 3)`,
-# indicating little evidence of systematic between-participant differences
-# in baseline error rates.
-# 
-# Variance decomposition indicated that fixed effects accounted for approximately `r round(fixed_pct,2)`% of the total variance, participant-level variability accounted for `r  format(random_pct, scientific=FALSE)`%, and `r round(resid_pct,2)`% remained unexplained.
-```
-
 
 
 
@@ -2706,47 +2854,6 @@ df |> ggplot(aes(x= DURATION, y=ERROR_COUNT, color=FORMAT)) +
 
 
 
-## WIP
-
-
-### TODO Predict Error TYPE by FORMAT
-
-```{r }
-
-# df <- df_errors
-# 
-# ## PREDICT TYPE by FORMAT 
-# 
-# library(glmmTMB)
-# 
-# m1 <- glmmTMB(
-#   ERROR_TYPE ~ FORMAT + JAR + (1 | PID),
-#   data = df,
-#   family = multinomial()
-# )
-# 
-# 
-# library(brms)
-# 
-# model <- brm(
-#   ERROR_TYPE ~ FORMAT + JAR + (1 | PID),
-#   data = df,
-#   family = categorical()
-# )
-# 
-# 
-# 
-# install.packages("mclogit")
-# library(mclogit)
-# 
-# model <- mblogit(
-#   ERROR_TYPE ~ FORMAT + JAR,
-#   random = ~ 1 | PID,
-#   data = df
-# )
-
-
-```
 
 
 

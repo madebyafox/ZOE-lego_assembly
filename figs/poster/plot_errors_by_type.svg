@@ -1,5 +1,6 @@
 <?xml version='1.0' encoding='UTF-8' ?>
-<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' class='svglite' width='720.00pt' height='288.00pt' viewBox='0 0 720.00 288.00'>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='720.00pt' height='288.00pt' viewBox='0 0 720.00 288.00'>
+<g class='svglite'>
 <defs>
   <style type='text/css'><![CDATA[
     .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {
@@ -12,6 +13,10 @@
     .svglite text {
       white-space: pre;
     }
+    .svglite g.glyphgroup path {
+      fill: inherit;
+      stroke: none;
+    }
   ]]></style>
 </defs>
 <rect width='100%' height='100%' style='stroke: none; fill: none;'/>
@@ -23,111 +28,112 @@
 <g clip-path='url(#cpMC4wMHw3MjAuMDB8MC4wMHwyODguMDA=)'>
 </g>
 <defs>
-  <clipPath id='cpMzMuMjd8MTk5LjY5fDQwLjM2fDI1Ni4yNw=='>
-    <rect x='33.27' y='40.36' width='166.42' height='215.90' />
+  <clipPath id='cpMzMuMTN8MTk5LjY4fDQwLjA5fDI1Ni41MA=='>
+    <rect x='33.13' y='40.09' width='166.55' height='216.41' />
   </clipPath>
 </defs>
-<g clip-path='url(#cpMzMuMjd8MTk5LjY5fDQwLjM2fDI1Ni4yNw==)'>
-<polyline points='33.27,220.63 199.69,220.63 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='33.27,168.97 199.69,168.97 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='33.27,117.32 199.69,117.32 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='33.27,65.67 199.69,65.67 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='33.27,246.45 199.69,246.45 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='33.27,194.80 199.69,194.80 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='33.27,143.15 199.69,143.15 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='33.27,91.50 199.69,91.50 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='64.47,256.27 64.47,40.36 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='116.48,256.27 116.48,40.36 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='168.48,256.27 168.48,40.36 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<rect x='41.07' y='70.84' width='46.81' height='149.79' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D7EAEA;' />
-<rect x='41.07' y='220.63' width='46.81' height='20.66' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #AED5D5;' />
-<rect x='41.07' y='241.29' width='46.81' height='5.17' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #389695;' />
-<rect x='93.07' y='132.82' width='46.81' height='51.65' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #DED5EA;' />
-<rect x='93.07' y='184.47' width='46.81' height='61.98' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #BCABD5;' />
-<rect x='145.08' y='127.65' width='46.81' height='113.63' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #EECBE0;' />
-<rect x='145.08' y='241.29' width='46.81' height='5.17' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D785B9;' />
+<g clip-path='url(#cpMzMuMTN8MTk5LjY4fDQwLjA5fDI1Ni41MA==)'>
+<polyline points='33.13,220.78 199.68,220.78 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='33.13,169.01 199.68,169.01 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='33.13,117.24 199.68,117.24 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='33.13,65.46 199.68,65.46 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='33.13,246.67 199.68,246.67 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='33.13,194.89 199.68,194.89 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='33.13,143.12 199.68,143.12 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='33.13,91.35 199.68,91.35 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='64.35,256.50 64.35,40.09 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='116.40,256.50 116.40,40.09 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='168.45,256.50 168.45,40.09 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<rect x='40.93' y='70.64' width='46.84' height='150.14' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D7EAEA;' />
+<rect x='40.93' y='220.78' width='46.84' height='20.71' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #AED5D5;' />
+<rect x='40.93' y='241.49' width='46.84' height='5.18' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #389695;' />
+<rect x='92.98' y='132.77' width='46.84' height='51.77' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #DED5EA;' />
+<rect x='92.98' y='184.54' width='46.84' height='62.13' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #BCABD5;' />
+<rect x='145.03' y='127.59' width='46.84' height='113.90' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #EECBE0;' />
+<rect x='145.03' y='241.49' width='46.84' height='5.18' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D785B9;' />
 </g>
 <g clip-path='url(#cpMC4wMHw3MjAuMDB8MC4wMHwyODguMDA=)'>
 </g>
 <defs>
-  <clipPath id='cpMjA1LjE3fDM3MS41OHw0MC4zNnwyNTYuMjc='>
-    <rect x='205.17' y='40.36' width='166.42' height='215.90' />
+  <clipPath id='cpMjA1LjE1fDM3MS43MHw0MC4wOXwyNTYuNTA='>
+    <rect x='205.15' y='40.09' width='166.55' height='216.41' />
   </clipPath>
 </defs>
-<g clip-path='url(#cpMjA1LjE3fDM3MS41OHw0MC4zNnwyNTYuMjc=)'>
-<polyline points='205.17,220.63 371.58,220.63 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='205.17,168.97 371.58,168.97 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='205.17,117.32 371.58,117.32 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='205.17,65.67 371.58,65.67 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='205.17,246.45 371.58,246.45 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='205.17,194.80 371.58,194.80 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='205.17,143.15 371.58,143.15 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='205.17,91.50 371.58,91.50 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='236.37,256.27 236.37,40.36 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='288.37,256.27 288.37,40.36 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<polyline points='340.38,256.27 340.38,40.36 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
-<rect x='212.97' y='50.18' width='46.81' height='123.96' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D7EAEA;' />
-<rect x='212.97' y='174.14' width='46.81' height='61.98' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #AED5D5;' />
-<rect x='212.97' y='236.12' width='46.81' height='5.17' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #74B6B5;' />
-<rect x='212.97' y='241.29' width='46.81' height='5.17' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #389695;' />
-<rect x='264.97' y='199.97' width='46.81' height='10.33' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #DED5EA;' />
-<rect x='264.97' y='210.30' width='46.81' height='30.99' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #BCABD5;' />
-<rect x='264.97' y='241.29' width='46.81' height='5.17' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #9073B9;' />
-<rect x='316.98' y='174.14' width='46.81' height='67.15' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #EECBE0;' />
-<rect x='316.98' y='241.29' width='46.81' height='5.17' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D785B9;' />
+<g clip-path='url(#cpMjA1LjE1fDM3MS43MHw0MC4wOXwyNTYuNTA=)'>
+<polyline points='205.15,220.78 371.70,220.78 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='205.15,169.01 371.70,169.01 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='205.15,117.24 371.70,117.24 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='205.15,65.46 371.70,65.46 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='205.15,246.67 371.70,246.67 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='205.15,194.89 371.70,194.89 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='205.15,143.12 371.70,143.12 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='205.15,91.35 371.70,91.35 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='236.38,256.50 236.38,40.09 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='288.43,256.50 288.43,40.09 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='340.47,256.50 340.47,40.09 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<rect x='212.96' y='49.93' width='46.84' height='124.25' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D7EAEA;' />
+<rect x='212.96' y='174.19' width='46.84' height='62.13' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #AED5D5;' />
+<rect x='212.96' y='236.31' width='46.84' height='5.18' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #74B6B5;' />
+<rect x='212.96' y='241.49' width='46.84' height='5.18' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #389695;' />
+<rect x='265.01' y='200.07' width='46.84' height='10.35' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #DED5EA;' />
+<rect x='265.01' y='210.43' width='46.84' height='31.06' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #BCABD5;' />
+<rect x='265.01' y='241.49' width='46.84' height='5.18' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #9073B9;' />
+<rect x='317.05' y='174.19' width='46.84' height='67.30' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #EECBE0;' />
+<rect x='317.05' y='241.49' width='46.84' height='5.18' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D785B9;' />
 </g>
 <g clip-path='url(#cpMC4wMHw3MjAuMDB8MC4wMHwyODguMDA=)'>
 </g>
 <defs>
-  <clipPath id='cpMzMuMjd8MTk5LjY5fDIzLjM0fDQwLjM2'>
-    <rect x='33.27' y='23.34' width='166.42' height='17.03' />
+  <clipPath id='cpMzMuMTN8MTk5LjY4fDIzLjE4fDQwLjA5'>
+    <rect x='33.13' y='23.18' width='166.55' height='16.92' />
   </clipPath>
 </defs>
-<g clip-path='url(#cpMzMuMjd8MTk5LjY5fDIzLjM0fDQwLjM2)'>
-<text x='116.48' y='35.00' text-anchor='middle' style='font-size: 8.80px;fill: #1A1A1A; font-family: "Arial";' textLength='41.55px' lengthAdjust='spacingAndGlyphs'>BOOKLET</text>
+<g clip-path='url(#cpMzMuMTN8MTk5LjY4fDIzLjE4fDQwLjA5)'>
+<text x='116.40' y='34.79' text-anchor='middle' style='font-size: 8.80px;fill: #1A1A1A; font-family: "Arial";' textLength='41.58px' lengthAdjust='spacingAndGlyphs'>BOOKLET</text>
 </g>
 <g clip-path='url(#cpMC4wMHw3MjAuMDB8MC4wMHwyODguMDA=)'>
 </g>
 <defs>
-  <clipPath id='cpMjA1LjE3fDM3MS41OHwyMy4zNHw0MC4zNg=='>
-    <rect x='205.17' y='23.34' width='166.42' height='17.03' />
+  <clipPath id='cpMjA1LjE1fDM3MS43MHwyMy4xOHw0MC4wOQ=='>
+    <rect x='205.15' y='23.18' width='166.55' height='16.92' />
   </clipPath>
 </defs>
-<g clip-path='url(#cpMjA1LjE3fDM3MS41OHwyMy4zNHw0MC4zNg==)'>
-<text x='288.37' y='35.00' text-anchor='middle' style='font-size: 8.80px;fill: #1A1A1A; font-family: "Arial";' textLength='17.60px' lengthAdjust='spacingAndGlyphs'>APP</text>
+<g clip-path='url(#cpMjA1LjE1fDM3MS43MHwyMy4xOHw0MC4wOQ==)'>
+<text x='288.43' y='34.79' text-anchor='middle' style='font-size: 8.80px;fill: #1A1A1A; font-family: "Arial";' textLength='17.62px' lengthAdjust='spacingAndGlyphs'>APP</text>
 </g>
 <g clip-path='url(#cpMC4wMHw3MjAuMDB8MC4wMHwyODguMDA=)'>
-<text x='64.47' y='267.50' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='67.97px' lengthAdjust='spacingAndGlyphs'>Placement Errors</text>
-<text x='116.48' y='267.50' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='87.04px' lengthAdjust='spacingAndGlyphs'>Piece Selection Errors</text>
-<text x='168.48' y='267.50' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='114.90px' lengthAdjust='spacingAndGlyphs'>Spatial Transformation Errors</text>
-<text x='236.37' y='267.50' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='67.97px' lengthAdjust='spacingAndGlyphs'>Placement Errors</text>
-<text x='288.37' y='267.50' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='87.04px' lengthAdjust='spacingAndGlyphs'>Piece Selection Errors</text>
-<text x='340.38' y='267.50' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='114.90px' lengthAdjust='spacingAndGlyphs'>Spatial Transformation Errors</text>
-<text x='28.34' y='249.61' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='4.90px' lengthAdjust='spacingAndGlyphs'>0</text>
-<text x='28.34' y='197.95' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='9.79px' lengthAdjust='spacingAndGlyphs'>10</text>
-<text x='28.34' y='146.30' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='9.79px' lengthAdjust='spacingAndGlyphs'>20</text>
-<text x='28.34' y='94.65' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='9.79px' lengthAdjust='spacingAndGlyphs'>30</text>
-<text x='202.43' y='280.09' text-anchor='middle' style='font-size: 11.00px; font-family: "Arial";' textLength='74.56px' lengthAdjust='spacingAndGlyphs'>ERROR_TYPE</text>
-<text transform='translate(13.37,148.31) rotate(-90)' text-anchor='middle' style='font-size: 11.00px; font-family: "Arial";' textLength='26.91px' lengthAdjust='spacingAndGlyphs'>count</text>
-<text x='388.02' y='71.76' style='font-size: 11.00px; font-family: "Arial";' textLength='39.72px' lengthAdjust='spacingAndGlyphs'>ERROR</text>
-<rect x='388.73' y='79.16' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D7EAEA;' />
-<rect x='388.73' y='96.44' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #DED5EA;' />
-<rect x='388.73' y='113.72' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #EECBE0;' />
-<rect x='388.73' y='131.00' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #AED5D5;' />
-<rect x='388.73' y='148.28' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #BCABD5;' />
-<rect x='388.73' y='165.56' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #74B6B5;' />
-<rect x='388.73' y='182.84' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #389695;' />
-<rect x='388.73' y='200.12' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D785B9;' />
-<rect x='388.73' y='217.40' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #9073B9;' />
-<text x='410.78' y='90.25' style='font-size: 8.80px; font-family: "Arial";' textLength='298.26px' lengthAdjust='spacingAndGlyphs'>Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union</text>
-<text x='410.78' y='107.53' style='font-size: 8.80px; font-family: "Arial";' textLength='86.57px' lengthAdjust='spacingAndGlyphs'>Missed/Skipped Piece</text>
-<text x='410.78' y='124.81' style='font-size: 8.80px; font-family: "Arial";' textLength='89.48px' lengthAdjust='spacingAndGlyphs'>Piece Orientation Error</text>
-<text x='410.78' y='142.09' style='font-size: 8.80px; font-family: "Arial";' textLength='134.46px' lengthAdjust='spacingAndGlyphs'>Carry-forward Incorrect Placement</text>
-<text x='410.78' y='159.37' style='font-size: 8.80px; font-family: "Arial";' textLength='58.68px' lengthAdjust='spacingAndGlyphs'>Incorrect Piece</text>
-<text x='410.78' y='176.65' style='font-size: 8.80px; font-family: "Arial";' textLength='97.30px' lengthAdjust='spacingAndGlyphs'>Missed Reassembly Part</text>
-<text x='410.78' y='193.93' style='font-size: 8.80px; font-family: "Arial";' textLength='127.13px' lengthAdjust='spacingAndGlyphs'>Placement On Incorrect Piece(s)</text>
-<text x='410.78' y='211.21' style='font-size: 8.80px; font-family: "Arial";' textLength='91.44px' lengthAdjust='spacingAndGlyphs'>Model Orientation Error</text>
-<text x='410.78' y='228.49' style='font-size: 8.80px; font-family: "Arial";' textLength='75.81px' lengthAdjust='spacingAndGlyphs'>Unnecessary Piece</text>
-<text x='33.27' y='14.94' style='font-size: 13.20px; font-family: "Arial";' textLength='176.64px' lengthAdjust='spacingAndGlyphs'>Errors by FORMAT and TYPE</text>
+<text x='64.35' y='267.74' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='67.94px' lengthAdjust='spacingAndGlyphs'>Placement Errors</text>
+<text x='116.40' y='267.74' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='87.02px' lengthAdjust='spacingAndGlyphs'>Piece Selection Errors</text>
+<text x='168.45' y='267.74' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='114.34px' lengthAdjust='spacingAndGlyphs'>Spatial Transformation Errors</text>
+<text x='236.38' y='267.74' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='67.94px' lengthAdjust='spacingAndGlyphs'>Placement Errors</text>
+<text x='288.43' y='267.74' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='87.02px' lengthAdjust='spacingAndGlyphs'>Piece Selection Errors</text>
+<text x='340.47' y='267.74' text-anchor='middle' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='114.34px' lengthAdjust='spacingAndGlyphs'>Spatial Transformation Errors</text>
+<text x='28.20' y='249.82' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='4.89px' lengthAdjust='spacingAndGlyphs'>0</text>
+<text x='28.20' y='198.04' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='9.78px' lengthAdjust='spacingAndGlyphs'>10</text>
+<text x='28.20' y='146.27' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='9.78px' lengthAdjust='spacingAndGlyphs'>20</text>
+<text x='28.20' y='94.50' text-anchor='end' style='font-size: 8.80px;fill: #4D4D4D; font-family: "Arial";' textLength='9.78px' lengthAdjust='spacingAndGlyphs'>30</text>
+<text x='202.41' y='280.20' text-anchor='middle' style='font-size: 11.00px; font-family: "Arial";' textLength='74.59px' lengthAdjust='spacingAndGlyphs'>ERROR_TYPE</text>
+<text transform='translate(13.36,148.30) rotate(-90)' text-anchor='middle' style='font-size: 11.00px; font-family: "Arial";' textLength='26.94px' lengthAdjust='spacingAndGlyphs'>count</text>
+<text x='388.14' y='71.74' style='font-size: 11.00px; font-family: "Arial";' textLength='39.72px' lengthAdjust='spacingAndGlyphs'>ERROR</text>
+<rect x='388.85' y='79.09' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D7EAEA;' />
+<rect x='388.85' y='96.37' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #DED5EA;' />
+<rect x='388.85' y='113.65' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #EECBE0;' />
+<rect x='388.85' y='130.93' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #AED5D5;' />
+<rect x='388.85' y='148.21' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #BCABD5;' />
+<rect x='388.85' y='165.49' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #74B6B5;' />
+<rect x='388.85' y='182.77' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #389695;' />
+<rect x='388.85' y='200.05' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #D785B9;' />
+<rect x='388.85' y='217.33' width='15.86' height='15.86' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #9073B9;' />
+<text x='410.90' y='90.17' style='font-size: 8.80px; font-family: "Arial";' textLength='298.14px' lengthAdjust='spacingAndGlyphs'>Incorrect Site Placement On Correct Piece(s) / Incorrect Subassembly Union</text>
+<text x='410.90' y='107.45' style='font-size: 8.80px; font-family: "Arial";' textLength='86.56px' lengthAdjust='spacingAndGlyphs'>Missed/Skipped Piece</text>
+<text x='410.90' y='124.73' style='font-size: 8.80px; font-family: "Arial";' textLength='89.42px' lengthAdjust='spacingAndGlyphs'>Piece Orientation Error</text>
+<text x='410.90' y='142.01' style='font-size: 8.80px; font-family: "Arial";' textLength='134.38px' lengthAdjust='spacingAndGlyphs'>Carry-forward Incorrect Placement</text>
+<text x='410.90' y='159.29' style='font-size: 8.80px; font-family: "Arial";' textLength='58.66px' lengthAdjust='spacingAndGlyphs'>Incorrect Piece</text>
+<text x='410.90' y='176.57' style='font-size: 8.80px; font-family: "Arial";' textLength='97.30px' lengthAdjust='spacingAndGlyphs'>Missed Reassembly Part</text>
+<text x='410.90' y='193.85' style='font-size: 8.80px; font-family: "Arial";' textLength='127.08px' lengthAdjust='spacingAndGlyphs'>Placement On Incorrect Piece(s)</text>
+<text x='410.90' y='211.13' style='font-size: 8.80px; font-family: "Arial";' textLength='91.36px' lengthAdjust='spacingAndGlyphs'>Model Orientation Error</text>
+<text x='410.90' y='228.41' style='font-size: 8.80px; font-family: "Arial";' textLength='75.81px' lengthAdjust='spacingAndGlyphs'>Unnecessary Piece</text>
+<text x='33.13' y='14.93' style='font-size: 13.20px; font-family: "Arial";' textLength='175.11px' lengthAdjust='spacingAndGlyphs'>Errors by FORMAT and TYPE</text>
+</g>
 </g>
 </svg>
