@@ -27,7 +27,6 @@ editor_options:
 
 
 
-
 ### step complexity
 - X complexity score import 
 - X complexity score join to step duration
@@ -109,6 +108,11 @@ error_type_pal <- c(
 error_recovery_pal <- c(
   "Error Recovery"                        = "#DF99A3",
   "Unresolved Upon Completion"            = "#BE3348"
+)
+
+format_pal <- c(
+  "BOOKLET" = "#E56797",
+  "APP"     = "#41B9B5"
 )
 ```
 
@@ -683,7 +687,7 @@ df <- df_tasks
 (plot_duration <- df %>% 
   ggplot(aes(JAR, duration_jar, group = PID, color=FORMAT)) +
     geom_line(alpha = .3, color = "black") +
-    scale_color_brewer(palette="Set2", direction =-1) +
+    scale_color_manual(values = format_pal) +
   geom_point() +
   facet_wrap(~ORDER) +
   theme_minimal() + 
@@ -1003,6 +1007,20 @@ Are jar durations different for book versus app instructions, adjusting for JAR 
 **TLDR** : significant main effect of JAR; r2 conditional = 59% r2 marginal = 11%
 
 ### JAR DURATION 
+
+#### DESCRIBE Jar Duration
+
+```{r}
+## SET DATAFRAME
+df_tasks %>% group_by(JAR) %>% 
+  summarise( min_dur = min(duration_jar), 
+             max_dur = max(duration_jar),
+             m_dur = mean(duration_jar),
+             sd_dur = sd(duration_jar))
+
+
+```
+
 #### VIS JAR Duration
 ```{r}
 ## SET DATAFRAME
@@ -1027,11 +1045,12 @@ df <- df_tasks
 df %>% 
   ggplot(aes(JAR, duration_jar, group = PID, color=FORMAT)) +
     geom_line(alpha = .3, color = "black") +
-    scale_color_brewer(palette="Set2", direction =-1) +
+    scale_color_manual(values = format_pal) +
   geom_point() +
   facet_wrap(~ORDER) +
   theme_minimal() + 
   labs(title = "Jar Duration by JAR and FORMAT")
+
 
 
 ```
@@ -1059,13 +1078,11 @@ report(m1)
 #### MODEL VIS Jar Duration
 ```{r model-jar-duration-vis}
 
-## ESTIMATED MARGINAL MEANS
-# emmeans(m1, ~ FORMAT)
-# emmeans(m1, ~ JAR)
+## SET MODEL 
+m <- m1
 
-
-## PLOT MODEL ESTIMATES 
-plot_model(m1, type = "est", show.values = TRUE, show.p=TRUE) +
+## PLOT MODEL ESTIMATES   
+plot_model(m, type = "est", show.values = TRUE, show.p=TRUE) +
   labs( title = "Model Estimates",
     subtitle = paste("", deparse(formula(m1)))) +
   theme_minimal()
@@ -1083,33 +1100,88 @@ plot_model(m1, type = "est", show.values = TRUE, show.p=TRUE) +
 df <- df_tasks
 
 ## PLOT ESTIMATED MARGINAL MEANS WITH RAW DATA 
-(g <- plot_model(
-  m1,
-  type = "emm", 
-  terms = c("JAR", "FORMAT", "ORDER")
-) + 
+# (g <- plot_model(
+#   m,
+#   type = "emm", 
+#   terms = c("JAR", "FORMAT", "ORDER")
+# ) + 
+#     scale_color_manual(values = format_pal) +
+#   geom_jitter(
+#     data = df %>%
+#       mutate(JAR_num = as.numeric(JAR)),
+#     aes(
+#       x = JAR_num,
+#       y = duration_jar,
+#       colour = FORMAT
+#     ),
+#     width = 0.08,
+#     alpha = 0.20,
+#     size = 1.5,
+#     inherit.aes = FALSE
+#   ) +
+#   scale_x_continuous(
+#     breaks = c(1, 2),
+#     labels = c("jar1", "jar2")
+#   ) +
+#   labs(
+#     subtitle = paste("", deparse(formula(m1))),
+#     caption = "(model estimated marginal means + raw data points)"
+#   ) +
+#   theme_minimal())
+
+
+
+
+###### VALID DESIGN CELLS ONLY 
+emm <- emmeans(m, ~ FORMAT + JAR + ORDER, type = "response")
+emm_df <- as.data.frame(emm)
+
+emm_df_valid <- emm_df %>%
+  filter(
+    (ORDER == "BOOK_FIRST" & JAR == "jar1" & FORMAT == "BOOKLET") |
+    (ORDER == "BOOK_FIRST" & JAR == "jar2" & FORMAT == "APP") |
+    (ORDER == "APP_FIRST"  & JAR == "jar1" & FORMAT == "APP") |
+    (ORDER == "APP_FIRST"  & JAR == "jar2" & FORMAT == "BOOKLET")
+  )
+
+raw_df_valid <- df %>%
+  filter(
+    (ORDER == "BOOK_FIRST" & JAR == "jar1" & FORMAT == "BOOKLET") |
+    (ORDER == "BOOK_FIRST" & JAR == "jar2" & FORMAT == "APP") |
+    (ORDER == "APP_FIRST"  & JAR == "jar1" & FORMAT == "APP") |
+    (ORDER == "APP_FIRST"  & JAR == "jar2" & FORMAT == "BOOKLET")
+  )
+
+ggplot() +
+  scale_color_manual(values = format_pal) +   
   geom_jitter(
-    data = df %>%
-      mutate(JAR_num = as.numeric(JAR)),
-    aes(
-      x = JAR_num,
-      y = duration_jar,
-      colour = FORMAT
-    ),
+    data = raw_df_valid,
+    aes(x = JAR, y = duration_jar, color = FORMAT),
     width = 0.08,
-    alpha = 0.20,
-    size = 1.5,
-    inherit.aes = FALSE
+    alpha = 0.25
   ) +
-  scale_x_continuous(
-    breaks = c(1, 2),
-    labels = c("jar1", "jar2")
+  geom_point(
+    data = emm_df_valid,
+    aes(x = JAR, y = emmean, color = FORMAT),
+    size = 3
   ) +
-  labs(
+  geom_errorbar(
+    data = emm_df_valid,
+    aes(
+      x = JAR,
+      ymin = lower.CL,
+      ymax = upper.CL,
+      color = FORMAT
+    ),
+    width = 0.10
+  ) +
+  facet_wrap(~ ORDER) +
+   labs(
+    title = "Model Marginal Estimated Means",
     subtitle = paste("", deparse(formula(m1))),
     caption = "(model estimated marginal means + raw data points)"
   ) +
-  theme_minimal())
+  theme_minimal()
 
 ggsave(
   filename = "figs/thesis/plot_model_jar_duration_emm.svg",
@@ -1177,6 +1249,19 @@ At the STEP level, each participant contributes 2 x (number of steps in a jar) d
 
 Are step durations different for book versus app instructions, adjusting for JAR and ORDER, while accounting for participant-level speed differences and step-level difficulty differences? (Note that setup and flipping/tapping steps are excluded)
 
+
+#### DESCRIBE STEP Duration  
+
+```{r}
+## SET DATAFRAME
+df_joined_steps_errors %>% group_by(JAR) %>% 
+  summarise( min_dur = min(DURATION), 
+             max_dur = max(DURATION),
+             m_dur = mean(DURATION),
+             sd_dur = sd(DURATION))
+
+
+```
 ##### VIS STEP duration (book x format)
 ```{r vis-step-duration}
 
@@ -1197,8 +1282,14 @@ df <- df_joined_steps_errors
 (g <- df %>% 
   ggplot(aes(x = JAR, y = DURATION, color=FORMAT)) +
   geom_jitter(width = 0.12, alpha = 0.25) +
-  scale_color_brewer(palette="Set2", direction =-1) +
-   # DISPLAY MEAN AS POINT
+  scale_color_manual(values = format_pal) +
+   # BOXPLOT  
+  geom_boxplot(
+    aes(group = JAR),
+    width = 0.5,
+    outlier.shape = NA
+  ) +
+    # DISPLAY MEAN AS POINT
   stat_summary(
     fun = mean,
     geom = "point",
@@ -1221,7 +1312,7 @@ df <- df_joined_steps_errors
 )
 
 ggsave(
-  filename = "figs/raw/step_duration_by_format.svg",
+  filename = "figs/thesis/plot_step_duration_boxplot.svg",
   plot = g,
   device = svglite,
   width = 6,
@@ -1241,12 +1332,13 @@ df <- df_joined_steps_errors
 ## PLOT RAW DATA   
 ## STRIP PLOT + MEAN LABEL
 (g <- ggplot(df,aes(x = COMPLEXITY, y = DURATION, colour = FORMAT)) +
+  # BOXPLOT  
   geom_boxplot(
     aes(group = COMPLEXITY),
     width = 0.5,
     outlier.shape = NA
   ) +
-    scale_color_brewer(palette="Set2", direction =-1) +
+  scale_color_manual(values = format_pal) +
   geom_jitter(
     width = 0.1,
     alpha = 0.6,
@@ -1276,18 +1368,15 @@ df <- df_joined_steps_errors
 )
 
 ggsave(
-  filename = "figs/raw/step_duration_by_complexity.svg",
+  filename = "figs/thesis/plot_step_duration_by_complexity.svg",
   plot = g,
   device = svglite,
-  width = 24,
-  height = 24,
+  width = 8,
+  height = 8,
   units = "in"
 )
 
 ```
-
-
-
 
 
 
@@ -1298,7 +1387,7 @@ ggsave(
 (g <- df %>% 
   ggplot(aes(x = FORMAT, y = DURATION, color=FORMAT)) +
   geom_jitter(width = 0.12, alpha = 0.25) +
-  scale_color_brewer(palette="Set2", direction =-1) +
+  scale_color_manual(values = format_pal) +
   geom_boxplot(width=-.25,  fill = NA)+
    # DISPLAY MEAN AS POINT
   stat_summary(
@@ -1388,6 +1477,8 @@ df <- df_joined_steps_errors
 
 ## MODEL
 m2 <- lmer(DURATION ~ FORMAT + JAR + ORDER + COMPLEXITY + (1 | PID) + (1|STEP), data = df)
+# m3 <- lmer(DURATION ~ JAR + ORDER + FORMAT * COMPLEXITY + (1 | PID) + (1|STEP), data = df) # no sig interaction
+
 
 ## DIAGNOSTICS
 # plot(m2)
@@ -1406,20 +1497,19 @@ report(m2)
 #### MODEL VIS STEP Duration (Complexity Model) 
 ```{r model-STEP-duration-vis}
 
-## ESTIMATED MARGINAL MEANS
-# emmeans(m1, ~ FORMAT)
-# emmeans(m1, ~ JAR)
+## set model 
+m <- m2
 
 
 ## PLOT MODEL ESTIMATES 
-plot_model(m2, type = "est", show.values = TRUE, show.p=TRUE) +
+plot_model(m, type = "est", show.values = TRUE, show.p=TRUE) +
   labs( title = "Model Estimates",
     subtitle = paste("", deparse(formula(m2))))+
   theme_minimal()
 
 
 ## PLOT ESTIMATED MARGINAL MEANS
-plot_model(m2, type = "emm", 
+plot_model(m, type = "emm", 
            terms = c("JAR","FORMAT","COMPLEXITY")) + 
   labs(
      subtitle = paste("", deparse(formula(m2))),
@@ -1428,48 +1518,50 @@ plot_model(m2, type = "emm",
 
 
 ## PLOT ESTIMATED MARGINAL MEANS WITH RAW DATA 
-plot_model(
-  m2,
-  show.values = TRUE,
-  type = "emm",
-  terms = c("JAR", "FORMAT", "COMPLEXITY")
-) + 
-  geom_jitter(
-    data = df %>%
-      mutate(
-        JAR_num = case_when(
-          JAR == "jar1" ~ 1,
-          JAR == "jar2" ~ 2
-        )
-      ),
-    aes(
-      x = JAR_num,
-      y = DURATION,
-      colour = FORMAT
-    ),
-    width = 0.08,
-    alpha = 0.05,
-    size = 1,
-    inherit.aes = FALSE
-  ) +
-  scale_x_continuous(
-    breaks = c(1, 2),
-    labels = c("jar1", "jar2")
-  ) +
-  labs(
-    subtitle = paste("", deparse(formula(m2))),
-    caption = "(estimated marginal means + raw data)"
-  ) +
-  theme_minimal()
-
-ggsave(
-  filename = "figs/thesis/plot_model_step_duration_emm.svg",
-  plot = plot_duration,
-  device = svglite,
-  width = 6,
-  height = 4,
-  units = "in"
+(g <- plot_model(
+   m,
+   show.values = TRUE,
+   type = "emm",
+   terms = c("JAR", "FORMAT", "COMPLEXITY")
+ ) +
+   scale_color_manual(values = format_pal) +
+   geom_jitter(
+     data = df %>%
+       mutate(
+         JAR_num = case_when(
+           JAR == "jar1" ~ 1,
+           JAR == "jar2" ~ 2
+         )
+       ),
+     aes(
+       x = JAR_num,
+       y = DURATION,
+       colour = FORMAT
+     ),
+     width = 0.08,
+     alpha = 0.05,
+     size = 1,
+     inherit.aes = FALSE
+   ) +
+   scale_x_continuous(
+     breaks = c(1, 2),
+     labels = c("jar1", "jar2")
+   ) +
+   labs(
+     subtitle = paste("", deparse(formula(m2))),
+     caption = "(estimated marginal means + raw data)"
+   ) +
+   theme_minimal()
 )
+
+ ggsave(
+   filename = "figs/thesis/plot_model_step_duration_emm.svg",
+   plot = g,
+   device = svglite,
+   width = 6,
+   height = 4,
+   units = "in"
+ )
 
 
 
@@ -1544,23 +1636,58 @@ ICC	= Proportion of remaining variance attributable to participant differences
 
 ### ERROR COUNT
 
+##### DESCRIBE Error Count
+
+```{r}
+## SET DATAFRAME
+df_error_counts %>% group_by(JAR) %>%
+  summarise( min_error = min(n_errors),
+             max_error = max(n_errors),
+             m_error = mean(n_errors),
+             sd_error = sd(n_errors))
+
+
+df_error_counts %>% group_by(FORMAT) %>%
+  summarise( min_error = min(n_errors),
+             max_error = max(n_errors),
+             m_error = mean(n_errors),
+             sd_error = sd(n_errors))
+
+
+```
+
 
 ##### VIS JAR Error Count
 ```{r test-error-count-FORMAT}
 
 ## SET DATAFRAME
-df <- df_error_counts
+df <- df_error_counts 
 
 ## GGPLOT LINE GRAPH WITHIN SUBJECTS
-df %>%
+(g <- df %>%
   ggplot(aes(JAR, n_errors, group = PID, color=FORMAT)) +
   geom_line(alpha = .3, color="black") +
-  scale_color_brewer(palette="Set2", direction =-1) +
+  geom_boxplot(
+    aes(group = FORMAT),
+    outlier.shape = NA,
+    width = 0.2,
+    fill = NA
+  ) +
+  scale_color_manual(values = format_pal) +
   geom_jitter(width = 0.01, alpha = 0.6) +
   facet_wrap(~ORDER) +
   theme_minimal() + 
   labs(title = "Error Count by JAR and FORMAT")
+)
 
+ggsave(
+  filename = "figs/thesis/plot_error_count_line.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
 ## ANOVA
 # a <- aov_ez(
 #   id = "PID",
@@ -1578,7 +1705,7 @@ df %>% ggplot(aes(x = JAR, y = n_errors, colour = FORMAT)) +
     outlier.shape = NA,
     width = 0.2
   ) +
-  scale_color_brewer(palette="Set2", direction =-1) +
+  scale_color_manual(values = format_pal) +
   geom_jitter(width = 0.01, alpha = 0.6) +
   # DISPLAY MEAN AS POINT
   stat_summary(
@@ -1613,21 +1740,34 @@ What predicts number of errors?
 
 ## SET DATAFRAME
 df <- df_error_counts 
+# %>% filter(PID %nin% c("P10")) ## when filtering outlier; format becomes significant in m1
 
 ######## DROP OUTLINES 
 ### DROP P10, P13
 # df <- df |> filter(PID %nin% c("P10", "P13")) |> droplevels()
 
 ## MODEL 1 | Poisson model for count data
-m_pois <- glmer(
-  n_errors ~ FORMAT + JAR + ORDER + (1|PID),
+m1 <- glmer(
+  n_errors ~ FORMAT + JAR  + ORDER + (1|PID),
   family = poisson,
   data = df
 )
-summary(m_pois)
-check_overdispersion(m_pois)
-# anova(m_pois)
-# report(m_pois)
+
+## MODEL 1 | Poisson model for count data
+# m2 <- glmer(
+#   n_errors ~ FORMAT * JAR  + (1|PID),
+#   family = poisson,
+#   data = df
+# )
+
+
+summary(m1)
+check_overdispersion(m1)
+
+# summary(m2)
+# check_overdispersion(m2)
+# compare_performance(m1,m2,rank=TRUE)
+
 
 ```
 
@@ -1639,7 +1779,7 @@ check_overdispersion(m_pois)
 df <- df_error_counts 
 
 ## set model
-m <- m_pois
+m <- m1
 
 ## PLOT MODEL ESTIMATES
 # plot_model(m_pois, show.values= TRUE, type = "re") # random effects
@@ -1649,31 +1789,88 @@ plot_model(m, show.values= TRUE, type = "est", show.p=TRUE)
 
 
 ## PLOT ESTIMATED MARGINAL MEANS WITH RAW DATA 
-(g <- plot_model(
-  m_pois,
-  bias_correction = TRUE,
-  type = "emm", 
-  terms = c("JAR", "FORMAT", "ORDER")
-) + 
+# (g <- plot_model(
+#   m,
+#   bias_correction = TRUE,
+#   type = "emm", 
+#   terms = c("JAR", "FORMAT", "ORDER")
+# ) + 
+#   scale_color_manual(values = format_pal) +   
+#   geom_jitter(
+#     data = df %>%
+#       mutate(JAR = as.numeric(JAR)),
+#     aes(
+#       x = JAR,
+#       y = n_errors,
+#       colour = FORMAT
+#     ),
+#     width = 0.08,
+#     alpha = 0.20,
+#     size = 1.5,
+#     inherit.aes = FALSE
+#   ) +
+#   # scale_x_continuous(
+#   #   breaks = c(1, 2),
+#   #   labels = c("jar1", "jar2")
+#   # ) +
+#   labs(
+#     subtitle = paste("", deparse(formula(m1))),
+#     caption = "(model estimated marginal means + raw data points)"
+#   ) +
+#   theme_minimal()
+# )
+
+
+
+
+###### VALID DESIGN CELLS ONLY 
+emm <- emmeans(m1, ~ FORMAT + JAR + ORDER, type = "response")
+
+emm_df <- as.data.frame(emm)
+
+emm_df_valid <- emm_df %>%
+  filter(
+    (ORDER == "BOOK_FIRST" & JAR == "jar1" & FORMAT == "BOOKLET") |
+    (ORDER == "BOOK_FIRST" & JAR == "jar2" & FORMAT == "APP") |
+    (ORDER == "APP_FIRST"  & JAR == "jar1" & FORMAT == "APP") |
+    (ORDER == "APP_FIRST"  & JAR == "jar2" & FORMAT == "BOOKLET")
+  )
+
+raw_df_valid <- df %>%
+  filter(
+    (ORDER == "BOOK_FIRST" & JAR == "jar1" & FORMAT == "BOOKLET") |
+    (ORDER == "BOOK_FIRST" & JAR == "jar2" & FORMAT == "APP") |
+    (ORDER == "APP_FIRST"  & JAR == "jar1" & FORMAT == "APP") |
+    (ORDER == "APP_FIRST"  & JAR == "jar2" & FORMAT == "BOOKLET")
+  )
+
+(g <- ggplot() +
+  scale_color_manual(values = format_pal) +   
   geom_jitter(
-    data = df %>%
-      mutate(JAR = as.numeric(JAR)),
+    data = raw_df_valid,
+    aes(x = JAR, y = n_errors, color = FORMAT),
+    width = 0.08,
+    alpha = 0.25
+  ) +
+  geom_point(
+    data = emm_df_valid,
+    aes(x = JAR, y = rate, color = FORMAT),
+    size = 3
+  ) +
+  geom_errorbar(
+    data = emm_df_valid,
     aes(
       x = JAR,
-      y = n_errors,
-      colour = FORMAT
+      ymin = asymp.LCL,
+      ymax = asymp.UCL,
+      color = FORMAT
     ),
-    width = 0.08,
-    alpha = 0.20,
-    size = 1.5,
-    inherit.aes = FALSE
+    width = 0.10
   ) +
-  # scale_x_continuous(
-  #   breaks = c(1, 2),
-  #   labels = c("jar1", "jar2")
-  # ) +
-  labs(
-    subtitle = paste("", deparse(formula(m_pois))),
+  facet_wrap(~ ORDER) +
+   labs(
+    title = "Model Marginal Estimated Means",
+    subtitle = paste("", deparse(formula(m1))),
     caption = "(model estimated marginal means + raw data points)"
   ) +
   theme_minimal()
@@ -1693,7 +1890,11 @@ ggsave(
 
 
 ```{r model-table-jar-error-count}
-(m_pois_tab <- tidy(m_pois, effects = "fixed") %>%
+## set model
+m <- m1
+
+
+(m_pois_tab <- tidy(m, effects = "fixed") %>%
   mutate(
     beta = round(estimate, 2),
     se   = round(std.error, 2),
@@ -1708,19 +1909,19 @@ jar2           <- m_pois_tab %>% filter(term == "JARjar2")
 intercept      <- m_pois_tab %>% filter(term == "(Intercept)")
 
 ## RANDOM EFFECT
-re_var <- as.data.frame(VarCorr(m_pois)) %>%
+re_var <- as.data.frame(VarCorr(m)) %>%
   filter(grp == "PID") %>%
   pull(vcov)
 
-re_sd <- as.data.frame(VarCorr(m_pois)) %>%
+re_sd <- as.data.frame(VarCorr(m)) %>%
   filter(grp == "PID") %>%
   pull(sdcor)
 
 ## OVERDISPERSION
-od <- performance::check_overdispersion(m_pois)
+od <- performance::check_overdispersion(m)
 
 ## DESCRIBE MODEL VARIANCE EXPLAINED
-v_pois <- get_variance(m_pois,   tolerance = 1e-12)
+v_pois <- get_variance(m,   tolerance = 1e-12)
 total_var <- v_pois$var.fixed +
              v_pois$var.random +
              v_pois$var.residual
@@ -1731,7 +1932,7 @@ resid_pct <- 100 * v_pois$var.residual / total_var
 
 
 ## MODEL TABLE
-(tab_model(m_pois,
+(tab_model(m,
   show.se = TRUE,
   show.stat = TRUE,
   show.df = TRUE,
@@ -1752,6 +1953,28 @@ An overdispersion diagnostic found no evidence that the Poisson assumption was v
 
 
 ### WIP ERROR RECOVERY (error level)
+
+##### DESCRIBE Error Recovery
+
+```{r}
+## SET DATAFRAME
+df_error_recoveries %>% 
+  group_by(JAR, RECOVERY) %>%
+  summarise(
+    n_errors = n(),
+    .groups = "drop"
+  )
+
+
+df_error_recoveries %>% 
+  group_by(FORMAT, RECOVERY) %>%
+  summarise(
+    n_errors = n(),
+    .groups = "drop"
+  )
+
+
+```
 
 #### VIS ERROR Recovery
 
@@ -1846,7 +2069,7 @@ df <- df_error_recoveries |>
 m <- m2
 
 ## PLOT MODEL ESTIMATES
-plot_model(m2, show.values= TRUE, type = "est", show.p=TRUE) 
+plot_model(m, show.values= TRUE, type = "est", show.p=TRUE) 
         
 
 
@@ -1857,10 +2080,70 @@ plot_model(m2, show.values= TRUE, type = "est", show.p=TRUE)
   type = "emm", 
   terms = c("JAR", "FORMAT", "ORDER")
 ) +
+  scale_color_manual(values = format_pal) +   
   labs(
     subtitle = paste("", deparse(formula(m))),
     caption = "(model estimated marginal means)"
   ) +
+  theme_minimal()
+)
+
+
+
+### PLOT ONLY DESIGN RELEVANT CELLS 
+emm <- emmeans(
+  m,
+  ~ FORMAT + JAR + ORDER,
+  type = "response"
+)
+
+emm_df <- as.data.frame(emm)
+
+design_cells <- df %>%
+  distinct(FORMAT, JAR, ORDER)
+
+emm_df_valid <- emm_df %>%
+  semi_join(
+    design_cells,
+    by = c("FORMAT", "JAR", "ORDER")
+  )
+
+
+(g <- ggplot() +
+  scale_color_manual(values = format_pal) +
+  geom_point(
+    data = emm_df_valid,
+    aes(x = JAR, y = prob, color = FORMAT),
+    size = 3,
+    position = position_dodge(width = 0.25)
+  ) +
+  geom_errorbar(
+    data = emm_df_valid,
+    aes(
+      x = JAR,
+      ymin = asymp.LCL,
+      ymax = asymp.UCL,
+      color = FORMAT
+    ),
+    width = 0.10,
+    linewidth = 0.8,
+    position = position_dodge(width = 0.25)
+  ) +
+  scale_y_continuous(
+    limits = c(0, 1),
+    breaks = seq(0, 1, by = 0.25)
+  ) +
+  facet_wrap(~ORDER)+
+
+  labs(
+    x = "JAR",
+    y = "Probability of error recovery",
+    color = "FORMAT",
+    title = "Model Estimated Error Recovery Probability",
+    subtitle = paste("", deparse(formula(m))),
+    caption = "(model estimated marginal probabilities)"
+  ) +
+
   theme_minimal()
 )
 
@@ -1873,17 +2156,6 @@ ggsave(
   units = "in"
 )
 ```
-
-
-
-
-
-
-
-
-
-
-
 
 
 ### WIP ERROR TYPE
@@ -2059,7 +2331,7 @@ df <- df_joined_steps_errors %>% filter (STEP %in% variant_steps$STEP) %>%
 df %>% 
   ggplot(aes(x = FORMAT, y = DURATION, color=FORMAT)) +
   geom_jitter(width = 0.12, alpha = 0.25) +
-  scale_color_brewer(palette="Set2", direction =-1) +
+  scale_color_manual(values = format_pal) +
   geom_boxplot(width=-.25,  fill = NA)+
    # DISPLAY MEAN AS POINT
   stat_summary(
@@ -2281,7 +2553,7 @@ grouped_ggwithinstats(data = df,
 df %>%
   ggplot(aes(FORMAT, count, group = PID, color=FORMAT)) +
   geom_line(alpha = .3, color="black") +
-  scale_color_brewer(palette="Set2", direction =-1) +
+ scale_color_manual(values = format_pal) +
   geom_point() +
   facet_wrap(~ORDER) +
   theme_minimal() + 
@@ -2600,7 +2872,7 @@ g <- df %>%
   ggplot(aes(JAR, time, group = PID, color=FORMAT)) +
   geom_line(alpha = .3, color = "black") +
   # scale_color_brewer(palette="Paired", direction =-1) +
-    scale_color_brewer(palette="Set2", direction =-1) +
+    scale_color_manual(values = format_pal) +
 
   geom_point() +
   facet_wrap(~ORDER) +
@@ -2676,7 +2948,7 @@ grouped_ggwithinstats(data = df,
 df %>%
   ggplot(aes(FORMAT, time, group = PID, color=FORMAT)) +
   geom_line(alpha = .3, color="black") +
-  scale_color_brewer(palette="Set2", direction =-1) +
+  scale_color_manual(values = format_pal) +
   geom_point() +
   facet_wrap(~ORDER) +
   theme_minimal() + 
@@ -2726,7 +2998,7 @@ df <- df_tiny_task
 ## SCATTERPLOT
 g <- df %>% ggplot(aes(x= duration_jar, y = errors_jar, color=FORMAT)) +
   geom_jitter(alpha=0.5) + 
-  scale_color_brewer(palette="Set2", direction =-1) +
+  scale_color_manual(values = format_pal) +
   # geom_smooth(method = "lm", se = TRUE) + # linear regression
   geom_smooth(
   method = "glm",
@@ -2758,7 +3030,7 @@ df %>% ggplot(aes(x= errors_jar, y = duration_jar, color=FORMAT)) +
   method.args = list(family = poisson),
   se = TRUE
  ) + 
-  scale_color_brewer(palette="Set2", direction =-1) +
+  scale_color_manual(values = format_pal) +
   facet_wrap(~JAR) + 
   theme_minimal() + 
   labs(title = "Participant SPEED X ACCURACY")
@@ -2767,7 +3039,7 @@ df %>% ggplot(aes(x= errors_jar, y = duration_jar, color=FORMAT)) +
 ## SCATTERPLOT
 g <- df %>% ggplot(aes(x= duration_jar, y = errors_jar, color=FORMAT)) +
   geom_point(alpha=0.5) + 
-  scale_color_brewer(palette="Set2", direction =-1) +
+  scale_color_manual(values = format_pal) +
    # geom_smooth(method = "lm", se = TRUE) + # linear regression
   geom_smooth(
   method = "glm",
