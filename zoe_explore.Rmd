@@ -588,9 +588,10 @@ df_joined_steps_errors <- df_steps_duration   %>%
   mutate(ERROR_COUNT = coalesce(count, 0)) |> select(-count) |> 
   filter(STEP %nin% c("Flipping/Tapping Through Fast", "Step 0A", "Step 0B")) %>% 
   droplevels()
-  
+
 
 ```
+
 
 ### wrangle error-counts
 ```{r setup-error-counts}
@@ -1952,7 +1953,7 @@ An overdispersion diagnostic found no evidence that the Poisson assumption was v
 
 
 
-### WIP ERROR RECOVERY (error level)
+### ERROR RECOVERY (error level)
 
 ##### DESCRIBE Error Recovery
 
@@ -2158,7 +2159,7 @@ ggsave(
 ```
 
 
-### WIP ERROR TYPE
+### ERROR TYPE
 
 #### VIS Error Type (Simple)
 
@@ -2260,6 +2261,309 @@ ggsave(
 
 
 ```
+
+
+
+
+
+## SPEED-ACCURACY
+
+#### DESCRIBE Jar-level speed x accuracy
+
+What is the relationship between a participant's speed and accuracy on the tasks?
+```{r, warning=FALSE}
+## SET DATAFRAME
+df <- df_tiny_task
+
+
+## SCATTERPLOT
+g <- df %>% ggplot(aes(x= duration_jar, y = errors_jar, color=FORMAT)) +
+  geom_jitter(alpha=0.5) + 
+  scale_color_manual(values = format_pal) +
+  # geom_smooth(method = "lm", se = TRUE) + # linear regression
+  geom_smooth(
+  method = "glm",
+  method.args = list(family = poisson),
+  se = TRUE
+ ) + 
+  # facet_wrap(~JAR) + 
+  theme_minimal() +
+  labs(title = "Participant SPEED X ACCURACY")
+
+g
+ggsave(
+  filename = "figs/speed_accuracy_JAR.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
+
+
+## SCATTERPLOT
+df %>% ggplot(aes(x= errors_jar, y = duration_jar, color=FORMAT)) +
+  geom_point(alpha=0.5) + 
+   # geom_smooth(method = "lm", se = TRUE) + # linear regression
+  geom_smooth(
+  method = "glm",
+  method.args = list(family = poisson),
+  se = TRUE
+ ) + 
+  scale_color_manual(values = format_pal) +
+  facet_wrap(~JAR) + 
+  theme_minimal() + 
+  labs(title = "Participant SPEED X ACCURACY")
+
+
+## SCATTERPLOT
+g <- df %>% ggplot(aes(x= duration_jar, y = errors_jar, color=JAR)) +
+  geom_point(alpha=0.5) + 
+  scale_color_brewer(palette="Set2", direction =-1) +
+   # geom_smooth(method = "lm", se = TRUE) + # linear regression
+  geom_smooth(
+  method = "glm",
+  method.args = list(family = poisson),
+  se = TRUE
+ ) + 
+  facet_wrap(~ORDER) + 
+  theme_minimal() + 
+  labs(title = "Participant SPEED X ACCURACY",
+       caption="(poisson regression)") 
+  
+g
+ggsave(
+  filename = "figs/speed_accuracy_JAR_FORMAT_FACET.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
+## SCATTERPLOT
+g <- df %>% ggplot(aes(x= duration_jar, y = errors_jar, color=FORMAT)) +
+  geom_point(alpha=0.5) + 
+  scale_color_manual(values = format_pal) +
+   # geom_smooth(method = "lm", se = TRUE) + # linear regression
+  geom_smooth(
+  method = "glm",
+  method.args = list(family = poisson),
+  se = TRUE
+ ) + 
+  facet_wrap(~JAR) + 
+  theme_minimal() + 
+  labs(title = "Participant SPEED X ACCURACY",
+       caption="(poisson regression)") 
+  
+g
+ggsave(
+  filename = "figs/thesis/speed_accuracy_JAR_FORMAT_FACET.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+
+```
+
+
+#### MODEL Jar-level speed x accuracy
+```{r}
+
+## SET DATAFRAME
+df <- df_tasks 
+
+## MODEL ERROR COUNT
+## MODEL 1 | Poisson model for count data
+
+m_pois <- glmer(
+  errors_jar ~ scale(duration_jar) + FORMAT + JAR  + ORDER + (1|PID),
+  family = poisson,
+  data = df
+)
+
+## MODEL CHECKS
+check_overdispersion(m_pois)
+check_zeroinflation(m_pois)
+
+m2 <- glmer(
+  errors_jar ~ scale(duration_jar) * FORMAT + JAR + ORDER + (1|PID),
+  family = poisson,
+  data = df
+)
+  
+## MODEL CHECKS
+check_overdispersion(m2)
+check_zeroinflation(m2)
+
+
+m3 <- glmer(
+  errors_jar ~ scale(duration_jar) * FORMAT + scale(duration_jar) * JAR + ORDER + (1|PID),
+  family = poisson,
+  data = df
+)
+
+## TRY NEGATIVE BINOMIAL
+m_nb <- glmmTMB(
+  errors_jar ~ scale(duration_jar) + FORMAT + JAR + ORDER +
+    (1 | PID),
+  data = df,
+  family = nbinom2
+)
+## MODEL CHECKS
+check_overdispersion(m_nb)
+check_zeroinflation(m_nb)
+
+
+
+## SIMULATION BASED DIAGNOSTICS OF OVERFITTING VS UNDERFITTING ZEROS
+set.seed(123)
+
+sim_pois <- simulate_residuals(m3)
+sim_nb   <- simulate_residuals(m_nb)
+
+check_zeroinflation(sim_pois)
+check_overdispersion(sim_pois)
+check_residuals(sim_pois)
+
+check_zeroinflation(sim_nb)
+check_overdispersion(sim_nb)
+check_residuals(sim_nb)
+## tldr  --> POISSON MODEL IS OK 
+
+
+summary(m3)
+report(m3)
+```
+
+#### MODEL VIS JAR speed x accuracy 
+
+```{r}
+
+## SET DATAFRAME
+df <- df_tasks
+
+## set model
+m <- m3
+
+## PLOT MODEL ESTIMATES
+# plot_model(m_pois, show.values= TRUE, type = "re") # random effects
+## PLOT MODEL ESTIMATES
+plot_model(m, show.values= TRUE, type = "est", show.p=TRUE) 
+
+
+## PLOT ESTIMATED MARGINAL MEANS WITH RAW DATA 
+(g <-  plot_model(
+  m,
+  # bias_correction = TRUE,
+  type = "emm",
+  terms = c("duration_jar","FORMAT", "JAR")
+) +
+  scale_color_manual(values = format_pal) +
+  geom_jitter(
+    data = df %>%
+      mutate(JAR = as.numeric(JAR)),
+    aes(
+      x = duration_jar,
+      y = errors_jar,
+      colour = FORMAT
+    ),
+    width = 0.08,
+    alpha = 0.20,
+    size = 1.5,
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(
+    breaks = c(1, 2),
+    labels = c("jar1", "jar2")
+  ) +
+  labs(
+    title = "Model Jar Speed X Accuracy",
+    subtitle = paste("", deparse(formula(m))),
+    caption = "(model estimated marginal means + raw data points)"
+  ) +
+  theme_minimal()
+)
+
+ggsave(
+  filename = "figs/thesis/plot_model_jar_speedaccuracy_emm.svg",
+  plot = g,
+  device = svglite,
+  width = 6,
+  height = 4,
+  units = "in"
+)
+```
+
+
+#### MODEL TABLE Jar speed x accuracy
+
+```{r}
+
+## set model 
+m <- m3
+
+## DESCRIBE MODEL VARIANCE EXPLAINED
+v_pois <- get_variance(m,   tolerance = 1e-12)
+total_var <- v_pois$var.fixed +
+             v_pois$var.random +
+             v_pois$var.residual
+
+fixed_pct <- 100 * v_pois$var.fixed / total_var
+random_pct <- 100 * v_pois$var.random / total_var
+resid_pct <- 100 * v_pois$var.residual / total_var
+
+
+## MODEL TABLE
+(tab_model(m,
+  show.se = TRUE,
+  show.stat = TRUE,
+  show.df = TRUE,
+  show.re.var = TRUE
+))
+```
+
+A Poisson generalized linear mixed-effects model was fit to predict error count from jar duration, FORMAT, JAR and ORDER (including interaction of duration * format and duration * order). 
+
+
+Variance decomposition indicated that fixed effects accounted for approximately `r round(fixed_pct, 1)`% of the total variance, participant-level variability accounted for `r round(random_pct, 1)`%, and `r round(resid_pct, 1)`% remained unexplained. 
+
+
+
+
+
+
+### TODO JOIN STEP DURATION - ERRORS
+```{r join-step-duration-error}
+
+
+
+df <- df_joined_steps_errors 
+
+df |> ggplot(aes(x= DURATION, y=ERROR_COUNT, color=FORMAT)) + 
+  geom_jitter(alpha = 0.25) + 
+  # facet_grid(COMPLEXITY~JAR) + 
+  geom_smooth(
+    method = "glm",
+    method.args = list(family = poisson),
+    se = TRUE
+  ) + 
+  theme_minimal()
+
+```
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2975,153 +3279,6 @@ summary(a)
 
 
 
-
-
-
-
-
-
-
-
-
-
-## SPEED-ACCURACY
-
-### DESCRIBE Jar-level 
-
-What is the relationship between a participant's speed and accuracy on the tasks?
-```{r, warning=FALSE}
-## SET DATAFRAME
-df <- df_tiny_task
-
-
-## SCATTERPLOT
-g <- df %>% ggplot(aes(x= duration_jar, y = errors_jar, color=FORMAT)) +
-  geom_jitter(alpha=0.5) + 
-  scale_color_manual(values = format_pal) +
-  # geom_smooth(method = "lm", se = TRUE) + # linear regression
-  geom_smooth(
-  method = "glm",
-  method.args = list(family = poisson),
-  se = TRUE
- ) + 
-  # facet_wrap(~JAR) + 
-  theme_minimal() +
-  labs(title = "Participant SPEED X ACCURACY")
-
-g
-ggsave(
-  filename = "figs/speed_accuracy_JAR.svg",
-  plot = g,
-  device = svglite,
-  width = 6,
-  height = 4,
-  units = "in"
-)
-
-
-
-## SCATTERPLOT
-df %>% ggplot(aes(x= errors_jar, y = duration_jar, color=FORMAT)) +
-  geom_point(alpha=0.5) + 
-   # geom_smooth(method = "lm", se = TRUE) + # linear regression
-  geom_smooth(
-  method = "glm",
-  method.args = list(family = poisson),
-  se = TRUE
- ) + 
-  scale_color_manual(values = format_pal) +
-  facet_wrap(~JAR) + 
-  theme_minimal() + 
-  labs(title = "Participant SPEED X ACCURACY")
-
-
-## SCATTERPLOT
-g <- df %>% ggplot(aes(x= duration_jar, y = errors_jar, color=FORMAT)) +
-  geom_point(alpha=0.5) + 
-  scale_color_manual(values = format_pal) +
-   # geom_smooth(method = "lm", se = TRUE) + # linear regression
-  geom_smooth(
-  method = "glm",
-  method.args = list(family = poisson),
-  se = TRUE
- ) + 
-  facet_wrap(~FORMAT) + 
-  theme_minimal() + 
-  labs(title = "Participant SPEED X ACCURACY",
-       caption="(poisson regression)") 
-  
-g
-ggsave(
-  filename = "figs/speed_accuracy_FORMAT_FACET.svg",
-  plot = g,
-  device = svglite,
-  width = 6,
-  height = 4,
-  units = "in"
-)
-
-
-## SCATTERPLOT
-g <- df %>% ggplot(aes(x= duration_jar, y = errors_jar, color=JAR)) +
-  geom_point(alpha=0.5) + 
-  scale_color_brewer(palette="Set2", direction =-1) +
-   # geom_smooth(method = "lm", se = TRUE) + # linear regression
-  geom_smooth(
-  method = "glm",
-  method.args = list(family = poisson),
-  se = TRUE
- ) + 
-  facet_wrap(~FORMAT) + 
-  theme_minimal() + 
-  labs(title = "Participant SPEED X ACCURACY",
-       caption="(poisson regression)") 
-  
-g
-ggsave(
-  filename = "figs/speed_accuracy_JAR_FORMAT_FACET.svg",
-  plot = g,
-  device = svglite,
-  width = 6,
-  height = 4,
-  units = "in"
-)
-```
-
-
-### MODEL Jar-level
-```{r}
-
-df <- df_tasks
-
-m1 <- lmer(duration_jar ~ errors_jar + FORMAT + JAR + (1|PID), data = df)
-summary(m1)
-report(m1)
-
-plot_model(m1, type="est", show.values = TRUE, show.p = TRUE, title = "duration_jar ~ errors + FORMAT + JAR + (1|PID)")
-plot_model(m1, type = "pred")
-```
-
-
-
-### WIP JOIN STEP DURATION - ERRORS
-```{r join-step-duration-error}
-
-
-
-df <- df_joined_steps_errors 
-
-df |> ggplot(aes(x= DURATION, y=ERROR_COUNT, color=FORMAT)) + 
-  geom_jitter(alpha = 0.25) + 
-  # facet_grid(COMPLEXITY~JAR) + 
-  geom_smooth(
-    method = "glm",
-    method.args = list(family = poisson),
-    se = TRUE
-  ) + 
-  theme_minimal()
-
-```
 
 
 
